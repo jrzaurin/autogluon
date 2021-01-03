@@ -72,7 +72,7 @@ class KNNModel(AbstractModel):
                 raise NotEnoughMemoryError  # don't train full model to avoid OOM error
 
     # TODO: Add HPO
-    def hyperparameter_tune(self, **kwargs):
+    def _hyperparameter_tune(self, **kwargs):
         return skip_hpo(self, **kwargs)
 
 

@@ -55,7 +55,7 @@ class FastTextModel(AbstractModel):
     @classmethod
     def _get_default_ag_args(cls) -> dict:
         default_ag_args = super()._get_default_ag_args()
-        extra_ag_args = {'valid_stacker': False, 'problem_types': [BINARY, MULTICLASS]}
+        extra_ag_args = {"valid_stacker": False, "problem_types": [BINARY, MULTICLASS]}
         default_ag_args.update(extra_ag_args)
         return default_ag_args
 
@@ -69,19 +69,22 @@ class FastTextModel(AbstractModel):
         import fasttext
 
         params = self.params.copy()
-        quantize_model = params.pop('quantize_model', True)
+        quantize_model = params.pop("quantize_model", True)
 
-        verbosity = kwargs.get('verbosity', 2)
-        if 'verbose' not in params:
+        verbosity = kwargs.get("verbosity", 2)
+        if "verbose" not in params:
             if verbosity <= 2:
-                params['verbose'] = 0
+                params["verbose"] = 0
             elif verbosity == 3:
-                params['verbose'] = 1
+                params["verbose"] = 1
             else:
-                params['verbose'] = 2
+                params["verbose"] = 2
 
         if sample_weight is not None:
-            logger.log(15, "sample_weight not yet supported for FastTextModel, this model will ignore them in training.")
+            logger.log(
+                15,
+                "sample_weight not yet supported for FastTextModel, this model will ignore them in training.",
+            )
 
         X = self.preprocess(X)
         logger.debug("NLP features %s", self.features)
@@ -103,7 +106,9 @@ class FastTextModel(AbstractModel):
                 self.model.quantize(input=f.name, retrain=True)
             gc.collect()
             mem_curr = psutil.Process().memory_info().rss
-            self._model_size_estimate = max(mem_curr - mem_start, 100000000 if quantize_model else 800000000)
+            self._model_size_estimate = max(
+                mem_curr - mem_start, 100000000 if quantize_model else 800000000
+            )
             logger.debug("finish training FastText model")
 
     # TODO: move logic to self._preprocess_nonadaptive()
@@ -178,7 +183,9 @@ class FastTextModel(AbstractModel):
         try_import_fasttext()
         import fasttext
 
-        obj: FastTextModel = super().load(path=path, reset_paths=reset_paths, verbose=verbose)
+        obj: FastTextModel = super().load(
+            path=path, reset_paths=reset_paths, verbose=verbose
+        )
 
         # load binary fasttext model
         if obj._model_bin_available:
@@ -186,7 +193,7 @@ class FastTextModel(AbstractModel):
             # TODO: hack to subpress a deprecation warning from fasttext
             # remove it once offcial fasttext is updated beyond 0.9.2
             # https://github.com/facebookresearch/fastText/issues/1067
-            with open(os.devnull, 'w') as f, contextlib.redirect_stderr(f):
+            with open(os.devnull, "w") as f, contextlib.redirect_stderr(f):
                 obj.model = fasttext.load_model(fasttext_model_file_name)
 
         return obj

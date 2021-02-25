@@ -3,7 +3,7 @@ from .skopt_searcher import SKoptSearcher
 from .grid_searcher import GridSearcher
 from .gp_searcher import GPFIFOSearcher, GPMultiFidelitySearcher
 
-__all__ = ['searcher_factory']
+__all__ = ["searcher_factory"]
 
 
 def searcher_factory(name, **kwargs):
@@ -59,22 +59,23 @@ def searcher_factory(name, **kwargs):
     GPFIFOSearcher
     GPMultiFidelitySearcher
     """
-    if name == 'random':
+    if name == "random":
         return RandomSearcher(**kwargs)
-    elif name == 'skopt':
-        _check_supported_scheduler(
-            name, kwargs.get('scheduler'), {'fifo'})
+    elif name == "skopt":
+        _check_supported_scheduler(name, kwargs.get("scheduler"), {"fifo"})
         return SKoptSearcher(**kwargs)
-    elif name == 'grid':
+    elif name == "grid":
         return GridSearcher(**kwargs)
-    elif name == 'bayesopt':
+    elif name == "bayesopt":
         # Gaussian process based Bayesian optimization
         # The searchers and their kwargs differ depending on the scheduler
         # type (fifo, hyperband_*)
         scheduler = _check_supported_scheduler(
-            name, kwargs.get('scheduler'),
-            {'fifo', 'hyperband_stopping', 'hyperband_promotion'})
-        if scheduler == 'fifo':
+            name,
+            kwargs.get("scheduler"),
+            {"fifo", "hyperband_stopping", "hyperband_promotion"},
+        )
+        if scheduler == "fifo":
             return GPFIFOSearcher(**kwargs)
         else:
             return GPMultiFidelitySearcher(**kwargs)
@@ -83,9 +84,10 @@ def searcher_factory(name, **kwargs):
 
 
 def _check_supported_scheduler(name, scheduler, supp_schedulers):
-    assert scheduler is not None, \
-        "Scheduler must set search_options['scheduler']"
-    assert scheduler in supp_schedulers, \
-        "Searcher '{}' only works with schedulers {} (not with '{}')".format(
-            name, supp_schedulers, scheduler)
+    assert scheduler is not None, "Scheduler must set search_options['scheduler']"
+    assert (
+        scheduler in supp_schedulers
+    ), "Searcher '{}' only works with schedulers {} (not with '{}')".format(
+        name, supp_schedulers, scheduler
+    )
     return scheduler

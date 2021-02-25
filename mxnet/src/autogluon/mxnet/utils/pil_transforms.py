@@ -7,8 +7,19 @@ import mxnet as mx
 from PIL import Image, ImageEnhance
 import collections.abc
 
-__all__ = ['Compose', 'RandomResizedCrop', 'RandomHorizontalFlip', 'ColorJitter',
-           'Resize', 'CenterCrop', 'ToTensor', 'RandomCrop', 'ToNDArray', 'ToPIL']
+__all__ = [
+    "Compose",
+    "RandomResizedCrop",
+    "RandomHorizontalFlip",
+    "ColorJitter",
+    "Resize",
+    "CenterCrop",
+    "ToTensor",
+    "RandomCrop",
+    "ToNDArray",
+    "ToPIL",
+]
+
 
 class Compose(object):
     """Composes several transforms together.
@@ -30,29 +41,33 @@ class Compose(object):
         return img
 
     def __repr__(self):
-        format_string = self.__class__.__name__ + '('
+        format_string = self.__class__.__name__ + "("
         for t in self.transforms:
-            format_string += '\n'
-            format_string += '    {0}'.format(t)
-        format_string += '\n)'
+            format_string += "\n"
+            format_string += "    {0}".format(t)
+        format_string += "\n)"
         return format_string
 
+
 class ToPIL(object):
-    """Convert image from ndarray format to PIL
-    """
+    """Convert image from ndarray format to PIL"""
+
     def __call__(self, img):
         x = Image.fromarray(img.asnumpy())
         return x
+
 
 class ToNDArray(object):
     def __call__(self, img):
         x = mx.nd.array(np.array(img), mx.cpu(0))
         return x
 
+
 class ToTensor(object):
     def __call__(self, img):
         x = mx.nd.array(np.array(img), mx.cpu(0))
         return x.swapaxes(0, 2).swapaxes(1, 2)
+
 
 class RandomResizedCrop(object):
     """Crop the given PIL Image to random size and aspect ratio.
@@ -67,7 +82,13 @@ class RandomResizedCrop(object):
         interpolation: Default: PIL.Image.BILINEAR
     """
 
-    def __init__(self, size, scale=(0.08, 1.0), ratio=(3. / 4., 4. / 3.), interpolation=Image.BILINEAR):
+    def __init__(
+        self,
+        size,
+        scale=(0.08, 1.0),
+        ratio=(3.0 / 4.0, 4.0 / 3.0),
+        interpolation=Image.BILINEAR,
+    ):
         if isinstance(size, tuple):
             self.size = size
         else:
@@ -99,10 +120,10 @@ class RandomResizedCrop(object):
 
         # Fallback to central crop
         in_ratio = float(width) / float(height)
-        if (in_ratio < min(ratio)):
+        if in_ratio < min(ratio):
             w = width
             h = int(round(w / min(ratio)))
-        elif (in_ratio > max(ratio)):
+        elif in_ratio > max(ratio):
             h = height
             w = int(round(h * max(ratio)))
         else:  # whole image
@@ -124,10 +145,10 @@ class RandomResizedCrop(object):
 
     def __repr__(self):
         interpolate_str = _pil_interpolation_to_str[self.interpolation]
-        format_string = self.__class__.__name__ + '(size={0}'.format(self.size)
-        format_string += ', scale={0}'.format(tuple(round(s, 4) for s in self.scale))
-        format_string += ', ratio={0}'.format(tuple(round(r, 4) for r in self.ratio))
-        format_string += ', interpolation={0})'.format(interpolate_str)
+        format_string = self.__class__.__name__ + "(size={0}".format(self.size)
+        format_string += ", scale={0}".format(tuple(round(s, 4) for s in self.scale))
+        format_string += ", ratio={0}".format(tuple(round(r, 4) for r in self.ratio))
+        format_string += ", interpolation={0})".format(interpolate_str)
         return format_string
 
     @staticmethod
@@ -135,7 +156,8 @@ class RandomResizedCrop(object):
         img = crop(img, top, left, height, width)
         img = resize(img, size, interpolation)
         return img
-    
+
+
 class RandomCrop(object):
     """Crop the given PIL Image at a random location.
 
@@ -172,7 +194,10 @@ class RandomCrop(object):
                 will result in [2, 1, 1, 2, 3, 4, 4, 3]
 
     """
-    def __init__(self, size, padding=None, pad_if_needed=False, fill=0, padding_mode='constant'):
+
+    def __init__(
+        self, size, padding=None, pad_if_needed=False, fill=0, padding_mode="constant"
+    ):
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
         else:
@@ -217,17 +242,23 @@ class RandomCrop(object):
 
         # pad the width if needed
         if self.pad_if_needed and img.size[0] < self.size[1]:
-            img = pad(img, (self.size[1] - img.size[0], 0), self.fill, self.padding_mode)
+            img = pad(
+                img, (self.size[1] - img.size[0], 0), self.fill, self.padding_mode
+            )
         # pad the height if needed
         if self.pad_if_needed and img.size[1] < self.size[0]:
-            img = pad(img, (0, self.size[0] - img.size[1]), self.fill, self.padding_mode)
+            img = pad(
+                img, (0, self.size[0] - img.size[1]), self.fill, self.padding_mode
+            )
 
         i, j, h, w = self.get_params(img, self.size)
 
         return crop(img, i, j, h, w)
 
     def __repr__(self):
-        return self.__class__.__name__ + '(size={0}, padding={1})'.format(self.size, self.padding)
+        return self.__class__.__name__ + "(size={0}, padding={1})".format(
+            self.size, self.padding
+        )
 
 
 class RandomHorizontalFlip(object):
@@ -251,7 +282,8 @@ class RandomHorizontalFlip(object):
         return img
 
     def __repr__(self):
-        return self.__class__.__name__ + '(p={})'.format(self.p)
+        return self.__class__.__name__ + "(p={})".format(self.p)
+
 
 class Lambda(object):
     """Apply a user-defined lambda as a transform.
@@ -267,7 +299,8 @@ class Lambda(object):
         return self.lambd(img)
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"
+
 
 class ColorJitter(object):
     """Randomly change the brightness, contrast and saturation of an image.
@@ -285,17 +318,23 @@ class ColorJitter(object):
             hue_factor is chosen uniformly from [-hue, hue] or the given [min, max].
             Should have 0<= hue <= 0.5 or -0.5 <= min <= max <= 0.5.
     """
-    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0):
-        self.brightness = self._check_input(brightness, 'brightness')
-        self.contrast = self._check_input(contrast, 'contrast')
-        self.saturation = self._check_input(saturation, 'saturation')
-        self.hue = self._check_input(hue, 'hue', center=0, bound=(-0.5, 0.5),
-                                     clip_first_on_zero=False)
 
-    def _check_input(self, value, name, center=1, bound=(0, float('inf')), clip_first_on_zero=True):
+    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0):
+        self.brightness = self._check_input(brightness, "brightness")
+        self.contrast = self._check_input(contrast, "contrast")
+        self.saturation = self._check_input(saturation, "saturation")
+        self.hue = self._check_input(
+            hue, "hue", center=0, bound=(-0.5, 0.5), clip_first_on_zero=False
+        )
+
+    def _check_input(
+        self, value, name, center=1, bound=(0, float("inf")), clip_first_on_zero=True
+    ):
         if isinstance(value, numbers.Number):
             if value < 0:
-                raise ValueError("If {} is a single number, it must be non negative.".format(name))
+                raise ValueError(
+                    "If {} is a single number, it must be non negative.".format(name)
+                )
             value = [center - value, center + value]
             if clip_first_on_zero:
                 value[0] = max(value[0], 0)
@@ -303,7 +342,11 @@ class ColorJitter(object):
             if not bound[0] <= value[0] <= value[1] <= bound[1]:
                 raise ValueError("{} values should be between {}".format(name, bound))
         else:
-            raise TypeError("{} should be a single number or a list/tuple with lenght 2.".format(name))
+            raise TypeError(
+                "{} should be a single number or a list/tuple with lenght 2.".format(
+                    name
+                )
+            )
 
         # if value is 0 or (1., 1.) for brightness/contrast/saturation
         # or (0., 0.) for hue, do nothing
@@ -323,7 +366,9 @@ class ColorJitter(object):
 
         if brightness is not None:
             brightness_factor = random.uniform(brightness[0], brightness[1])
-            transforms.append(Lambda(lambda img: adjust_brightness(img, brightness_factor)))
+            transforms.append(
+                Lambda(lambda img: adjust_brightness(img, brightness_factor))
+            )
 
         if contrast is not None:
             contrast_factor = random.uniform(contrast[0], contrast[1])
@@ -331,7 +376,9 @@ class ColorJitter(object):
 
         if saturation is not None:
             saturation_factor = random.uniform(saturation[0], saturation[1])
-            transforms.append(Lambda(lambda img: adjust_saturation(img, saturation_factor)))
+            transforms.append(
+                Lambda(lambda img: adjust_saturation(img, saturation_factor))
+            )
 
         if hue is not None:
             hue_factor = random.uniform(hue[0], hue[1])
@@ -349,17 +396,19 @@ class ColorJitter(object):
         Returns:
             PIL Image: Color jittered image.
         """
-        transform = self.get_params(self.brightness, self.contrast,
-                                    self.saturation, self.hue)
+        transform = self.get_params(
+            self.brightness, self.contrast, self.saturation, self.hue
+        )
         return transform(img)
 
     def __repr__(self):
-        format_string = self.__class__.__name__ + '('
-        format_string += 'brightness={0}'.format(self.brightness)
-        format_string += ', contrast={0}'.format(self.contrast)
-        format_string += ', saturation={0}'.format(self.saturation)
-        format_string += ', hue={0})'.format(self.hue)
+        format_string = self.__class__.__name__ + "("
+        format_string += "brightness={0}".format(self.brightness)
+        format_string += ", contrast={0}".format(self.contrast)
+        format_string += ", saturation={0}".format(self.saturation)
+        format_string += ", hue={0})".format(self.hue)
         return format_string
+
 
 class Resize(object):
     """Resize the input PIL Image to the given size.
@@ -374,7 +423,9 @@ class Resize(object):
     """
 
     def __init__(self, size, interpolation=Image.BILINEAR):
-        assert isinstance(size, int) or (isinstance(size, collections.abc.Iterable) and len(size) == 2)
+        assert isinstance(size, int) or (
+            isinstance(size, collections.abc.Iterable) and len(size) == 2
+        )
         self.size = size
         self.interpolation = interpolation
 
@@ -389,7 +440,9 @@ class Resize(object):
 
     def __repr__(self):
         interpolate_str = _pil_interpolation_to_str[self.interpolation]
-        return self.__class__.__name__ + '(size={0}, interpolation={1})'.format(self.size, interpolate_str)
+        return self.__class__.__name__ + "(size={0}, interpolation={1})".format(
+            self.size, interpolate_str
+        )
 
 
 class CenterCrop(object):
@@ -416,7 +469,7 @@ class CenterCrop(object):
         return self.center_crop(img, self.size)
 
     def __repr__(self):
-        return self.__class__.__name__ + '(size={0})'.format(self.size)
+        return self.__class__.__name__ + "(size={0})".format(self.size)
 
     @staticmethod
     def center_crop(img, output_size):
@@ -424,16 +477,21 @@ class CenterCrop(object):
             output_size = (int(output_size), int(output_size))
         image_width, image_height = img.size
         crop_height, crop_width = output_size
-        crop_top = int(round((image_height - crop_height) / 2.))
-        crop_left = int(round((image_width - crop_width) / 2.))
+        crop_top = int(round((image_height - crop_height) / 2.0))
+        crop_left = int(round((image_width - crop_width) / 2.0))
         return crop(img, crop_top, crop_left, crop_height, crop_width)
+
 
 def crop(img, top, left, height, width):
     return img.crop((left, top, left + width, top + height))
 
+
 def resize(img, size, interpolation=Image.BILINEAR):
-    if not (isinstance(size, int) or (isinstance(size, collections.abc.Iterable) and len(size) == 2)):
-        raise TypeError('Got inappropriate size arg: {}'.format(size))
+    if not (
+        isinstance(size, int)
+        or (isinstance(size, collections.abc.Iterable) and len(size) == 2)
+    ):
+        raise TypeError("Got inappropriate size arg: {}".format(size))
 
     if isinstance(size, int):
         w, h = img.size
@@ -450,15 +508,18 @@ def resize(img, size, interpolation=Image.BILINEAR):
     else:
         return img.resize(size[::-1], interpolation)
 
+
 def adjust_brightness(img, brightness_factor):
     enhancer = ImageEnhance.Brightness(img)
     img = enhancer.enhance(brightness_factor)
     return img
 
+
 def adjust_contrast(img, contrast_factor):
     enhancer = ImageEnhance.Contrast(img)
     img = enhancer.enhance(contrast_factor)
     return img
+
 
 def adjust_saturation(img, saturation_factor):
     enhancer = ImageEnhance.Color(img)
@@ -467,39 +528,46 @@ def adjust_saturation(img, saturation_factor):
 
 
 def adjust_hue(img, hue_factor):
-    if not(-0.5 <= hue_factor <= 0.5):
-        raise ValueError('hue_factor is not in [-0.5, 0.5].'.format(hue_factor))
+    if not (-0.5 <= hue_factor <= 0.5):
+        raise ValueError("hue_factor is not in [-0.5, 0.5].".format(hue_factor))
 
     input_mode = img.mode
-    if input_mode in {'L', '1', 'I', 'F'}:
+    if input_mode in {"L", "1", "I", "F"}:
         return img
-    h, s, v = img.convert('HSV').split()
+    h, s, v = img.convert("HSV").split()
     np_h = np.array(h, dtype=np.uint8)
     # uint8 addition take cares of rotation across boundaries
-    with np.errstate(over='ignore'):
+    with np.errstate(over="ignore"):
         np_h += np.uint8(hue_factor * 255)
-    h = Image.fromarray(np_h, 'L')
+    h = Image.fromarray(np_h, "L")
 
-    img = Image.merge('HSV', (h, s, v)).convert(input_mode)
+    img = Image.merge("HSV", (h, s, v)).convert(input_mode)
     return img
 
-def pad(img, padding, fill=0, padding_mode='constant'):
+
+def pad(img, padding, fill=0, padding_mode="constant"):
     if not isinstance(padding, (numbers.Number, tuple)):
-        raise TypeError('Got inappropriate padding arg')
+        raise TypeError("Got inappropriate padding arg")
     if not isinstance(fill, (numbers.Number, str, tuple)):
-        raise TypeError('Got inappropriate fill arg')
+        raise TypeError("Got inappropriate fill arg")
     if not isinstance(padding_mode, str):
-        raise TypeError('Got inappropriate padding_mode arg')
+        raise TypeError("Got inappropriate padding_mode arg")
 
     if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
-        raise ValueError("Padding must be an int or a 2, or 4 element tuple, not a " +
-                         "{} element tuple".format(len(padding)))
+        raise ValueError(
+            "Padding must be an int or a 2, or 4 element tuple, not a "
+            + "{} element tuple".format(len(padding))
+        )
 
-    assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric'], \
-        'Padding mode should be either constant, edge, reflect or symmetric'
+    assert padding_mode in [
+        "constant",
+        "edge",
+        "reflect",
+        "symmetric",
+    ], "Padding mode should be either constant, edge, reflect or symmetric"
 
-    if padding_mode == 'constant':
-        if img.mode == 'P':
+    if padding_mode == "constant":
+        if img.mode == "P":
             palette = img.getpalette()
             image = ImageOps.expand(img, border=padding, fill=fill)
             image.putpalette(palette)
@@ -516,10 +584,12 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             pad_top = padding[1]
             pad_right = padding[2]
             pad_bottom = padding[3]
-        if img.mode == 'P':
+        if img.mode == "P":
             palette = img.getpalette()
             img = np.asarray(img)
-            img = np.pad(img, ((pad_top, pad_bottom), (pad_left, pad_right)), padding_mode)
+            img = np.pad(
+                img, ((pad_top, pad_bottom), (pad_left, pad_right)), padding_mode
+            )
             img = Image.fromarray(img)
             img.putpalette(palette)
             return img
@@ -527,9 +597,15 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         img = np.asarray(img)
         # RGB image
         if len(img.shape) == 3:
-            img = np.pad(img, ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)), padding_mode)
+            img = np.pad(
+                img,
+                ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)),
+                padding_mode,
+            )
         # Grayscale image
         if len(img.shape) == 2:
-            img = np.pad(img, ((pad_top, pad_bottom), (pad_left, pad_right)), padding_mode)
+            img = np.pad(
+                img, ((pad_top, pad_bottom), (pad_left, pad_right)), padding_mode
+            )
 
         return Image.fromarray(img)

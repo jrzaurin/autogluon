@@ -7,10 +7,12 @@ from typing import List, Optional, Union, Tuple, Hashable
 from . import constants as _C
 from autogluon_contrib_nlp.data.vocab import Vocab
 
-__all__ = ['CategoricalColumnProperty',
-           'TextColumnProperty',
-           'NumericalColumnProperty',
-           'EntityColumnProperty']
+__all__ = [
+    "CategoricalColumnProperty",
+    "TextColumnProperty",
+    "NumericalColumnProperty",
+    "EntityColumnProperty",
+]
 
 
 class ColumnProperty(abc.ABC):
@@ -19,6 +21,7 @@ class ColumnProperty(abc.ABC):
     It performs basic featurization
 
     """
+
     type = _C.NULL
 
     def __init__(self, **kwargs):
@@ -50,11 +53,13 @@ class ColumnProperty(abc.ABC):
     @abc.abstractmethod
     def parse(self, column_data: pd.Series):
         """Parse the column data and fill in the necessary properties"""
-        assert not self._parsed, 'Cannot call parse twice. ' \
-                                 'Use "col_prop.clone()" and parse again.'
+        assert not self._parsed, (
+            "Cannot call parse twice. " 'Use "col_prop.clone()" and parse again.'
+        )
         self._parsed = True
-        assert isinstance(column_data, pd.Series), \
-            'Currently, the input column data must be a Pandas Series.'
+        assert isinstance(
+            column_data, pd.Series
+        ), "Currently, the input column data must be a Pandas Series."
         self._num_sample = len(column_data)
         self._num_missing_samples = column_data.isnull().sum().sum().item()
         self._name = column_data.name
@@ -65,17 +70,18 @@ class ColumnProperty(abc.ABC):
 
     def info(self, additional_attributes=None):
         basename = self.__class__.__name__
-        if basename.endswith('ColumnProperty'):
-            basename = basename[:(-len('ColumnProperty'))]
+        if basename.endswith("ColumnProperty"):
+            basename = basename[: (-len("ColumnProperty"))]
         padding = 3
-        ret = '{}(\n'.format(basename)
-        ret += ' ' * padding + 'name="{}"\n'.format(self.name)
-        ret += ' ' * padding + '#total/missing={}/{}\n'.format(self.num_sample,
-                                                               self.num_missing_sample)
+        ret = "{}(\n".format(basename)
+        ret += " " * padding + 'name="{}"\n'.format(self.name)
+        ret += " " * padding + "#total/missing={}/{}\n".format(
+            self.num_sample, self.num_missing_sample
+        )
         if additional_attributes is not None:
             for key, info in additional_attributes:
-                ret += ' ' * padding + '{}={}\n'.format(key, str(info))
-        ret += ')\n'
+                ret += " " * padding + "{}={}\n".format(key, str(info))
+        ret += ")\n"
         return ret
 
     @abc.abstractmethod
@@ -89,9 +95,11 @@ class ColumnProperty(abc.ABC):
 class CategoricalColumnProperty(ColumnProperty):
     type = _C.CATEGORICAL
 
-    def __init__(self,
-                 categories: Optional[List[Union[int, bool, str]]] = None,
-                 allow_missing: Optional[bool] = None):
+    def __init__(
+        self,
+        categories: Optional[List[Union[int, bool, str]]] = None,
+        allow_missing: Optional[bool] = None,
+    ):
         """
 
         Parameters
@@ -189,22 +197,29 @@ class CategoricalColumnProperty(ColumnProperty):
                 self._vocab = Vocab(tokens=categories)
             else:
                 self._vocab = Vocab(tokens=categories, unk_token=None)
-        self._freq = [value_counts[ele] if ele in value_counts else 0 for ele in self.categories]
+        self._freq = [
+            value_counts[ele] if ele in value_counts else 0 for ele in self.categories
+        ]
 
     def clone(self):
-        return CategoricalColumnProperty(categories=self.categories,
-                                         allow_missing=self.allow_missing)
+        return CategoricalColumnProperty(
+            categories=self.categories, allow_missing=self.allow_missing
+        )
 
     def get_attributes(self):
-        return {'categories': self.categories,
-                'allow_missing': self.allow_missing}
+        return {"categories": self.categories, "allow_missing": self.allow_missing}
 
     def info(self):
         return super().info(
-            [('num_class (total/non_special)', '{}/{}'.format(self.num_class,
-                                                              self.num_non_special_class)),
-             ('categories', self.categories),
-             ('freq', self.frequencies)])
+            [
+                (
+                    "num_class (total/non_special)",
+                    "{}/{}".format(self.num_class, self.num_non_special_class),
+                ),
+                ("categories", self.categories),
+                ("freq", self.frequencies),
+            ]
+        )
 
 
 class NumericalColumnProperty(ColumnProperty):
@@ -237,9 +252,10 @@ class NumericalColumnProperty(ColumnProperty):
         val = column_data[idx]
         inferred_shape = np.array(val).shape
         if self._shape is not None:
-            assert tuple(self._shape) == tuple(inferred_shape), 'Shape mismatch!. Expected shape={},' \
-                                     ' shape in the dataset is {}'.format(self._shape,
-                                                                          inferred_shape)
+            assert tuple(self._shape) == tuple(inferred_shape), (
+                "Shape mismatch!. Expected shape={},"
+                " shape in the dataset is {}".format(self._shape, inferred_shape)
+            )
         else:
             self._shape = inferred_shape
 
@@ -247,10 +263,10 @@ class NumericalColumnProperty(ColumnProperty):
         return NumericalColumnProperty(shape=self.shape)
 
     def get_attributes(self):
-        return {'shape': self.shape}
+        return {"shape": self.shape}
 
     def info(self):
-        return super().info([('shape', self.shape)])
+        return super().info([("shape", self.shape)])
 
 
 class TextColumnProperty(ColumnProperty):
@@ -264,7 +280,7 @@ class TextColumnProperty(ColumnProperty):
 
     def transform(self, ele):
         if ele is None:
-            return ''
+            return ""
         else:
             return str(ele)
 
@@ -294,8 +310,14 @@ class TextColumnProperty(ColumnProperty):
         return {}
 
     def info(self):
-        return super().info([('length, min/avg/max',
-                              f'{self.min_length}/{self.avg_length}/{self.max_length}')])
+        return super().info(
+            [
+                (
+                    "length, min/avg/max",
+                    f"{self.min_length}/{self.avg_length}/{self.max_length}",
+                )
+            ]
+        )
 
 
 def _get_entity_label_type(label) -> str:
@@ -346,12 +368,10 @@ class EntityColumnProperty(ColumnProperty):
     2) a tuple with (start, end) or (start, end, label)
 
     """
+
     type = _C.ENTITY
 
-    def __init__(self, parent,
-                 label_type=None,
-                 label_shape=None,
-                 label_keys=None):
+    def __init__(self, parent, label_type=None, label_shape=None, label_keys=None):
         """
 
         Parameters
@@ -377,8 +397,7 @@ class EntityColumnProperty(ColumnProperty):
         if self._label_shape is not None:
             self._label_shape = tuple(self._label_shape)
         if label_keys is not None:
-            self._label_vocab = Vocab(tokens=label_keys,
-                                      unk_token=None)
+            self._label_vocab = Vocab(tokens=label_keys, unk_token=None)
         else:
             self._label_vocab = None
         self._label_freq = None
@@ -386,10 +405,9 @@ class EntityColumnProperty(ColumnProperty):
         self._avg_entity_per_sample = None
         self._avg_span_length = None
 
-    def transform(self,
-                  data: Optional[Union[dict, List[dict],
-                                       Tuple, List[Tuple]]]) -> Tuple[np.ndarray,
-                                                                      Optional[np.ndarray]]:
+    def transform(
+        self, data: Optional[Union[dict, List[dict], Tuple, List[Tuple]]]
+    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """Transform the element to a formalized format
 
         Returns
@@ -407,11 +425,11 @@ class EntityColumnProperty(ColumnProperty):
         """
         if data is None:
             if self.label_type == _C.CATEGORICAL:
-                return np.zeros((0, 2), dtype=np.int32),\
-                       np.zeros((0,), dtype=np.int32)
+                return np.zeros((0, 2), dtype=np.int32), np.zeros((0,), dtype=np.int32)
             elif self.label_type == _C.NUMERICAL:
-                return np.zeros((0, 2), dtype=np.int32), \
-                       np.zeros((0,) + self.label_shape, dtype=np.float32)
+                return np.zeros((0, 2), dtype=np.int32), np.zeros(
+                    (0,) + self.label_shape, dtype=np.float32
+                )
             elif self.label_type == _C.NULL:
                 return np.zeros((0, 2), dtype=np.int32), None
             else:
@@ -422,12 +440,12 @@ class EntityColumnProperty(ColumnProperty):
             data = [data]
         for ele in data:
             if isinstance(ele, dict):
-                start = ele['start']
-                end = ele['end']
+                start = ele["start"]
+                end = ele["end"]
                 if self.label_type == _C.CATEGORICAL:
-                    labels.append(self.label_to_idx(ele['label']))
+                    labels.append(self.label_to_idx(ele["label"]))
                 elif self.label_type == _C.NUMERICAL:
-                    labels.append(ele['label'])
+                    labels.append(ele["label"])
             else:
                 start = ele[0]
                 end = ele[1]
@@ -510,16 +528,20 @@ class EntityColumnProperty(ColumnProperty):
         return self._num_total_entity
 
     def clone(self):
-        return EntityColumnProperty(parent=self.parent,
-                                    label_type=self.label_type,
-                                    label_shape=self.label_shape,
-                                    label_keys=self.label_keys)
+        return EntityColumnProperty(
+            parent=self.parent,
+            label_type=self.label_type,
+            label_shape=self.label_shape,
+            label_keys=self.label_keys,
+        )
 
     def get_attributes(self):
-        return {'parent': self.parent,
-                'label_type': self.label_type,
-                'label_shape': self.label_shape,
-                'label_keys': self.label_keys}
+        return {
+            "parent": self.parent,
+            "label_type": self.label_type,
+            "label_shape": self.label_shape,
+            "label_keys": self.label_keys,
+        }
 
     def parse(self, column_data: pd.Series):
         super().parse(column_data)
@@ -531,14 +553,15 @@ class EntityColumnProperty(ColumnProperty):
                 continue
             if isinstance(entities, dict) or isinstance(entities, tuple):
                 entities = [entities]
-            assert isinstance(entities, list),\
-                'The entity type is "{}" and is not supported by ' \
-                'GluonNLP. Received entities={}'.format(type(entities), entities)
+            assert isinstance(entities, list), (
+                'The entity type is "{}" and is not supported by '
+                "GluonNLP. Received entities={}".format(type(entities), entities)
+            )
             for entity in entities:
                 if isinstance(entity, dict):
-                    start = entity['start']
-                    end = entity['end']
-                    label = entity.get('label', None)
+                    start = entity["start"]
+                    end = entity["end"]
+                    label = entity.get("label", None)
                 else:
                     assert isinstance(entity, tuple)
                     if len(entity) == 2:
@@ -553,11 +576,12 @@ class EntityColumnProperty(ColumnProperty):
                 elif label_type == _C.NUMERICAL and self._label_shape is None:
                     self._label_shape = np.array(label).shape
                 if self._label_type is not None:
-                    assert self._label_type == label_type, \
-                        'Unmatched label types. ' \
-                        'The type of labels of all entities should be consistent. ' \
-                        'Received label type="{}".' \
+                    assert self._label_type == label_type, (
+                        "Unmatched label types. "
+                        "The type of labels of all entities should be consistent. "
+                        'Received label type="{}".'
                         ' Stored label_type="{}"'.format(label_type, self._label_type)
+                    )
                 else:
                     self._label_type = label_type
         self._num_total_entity = len(all_span_lengths)
@@ -566,40 +590,46 @@ class EntityColumnProperty(ColumnProperty):
         if self._label_type == _C.CATEGORICAL:
             if self._label_vocab is None:
                 keys = sorted(categorical_label_counter.keys())
-                self._label_vocab = Vocab(tokens=keys,
-                                          unk_token=None)
+                self._label_vocab = Vocab(tokens=keys, unk_token=None)
                 self._label_freq = [categorical_label_counter[ele] for ele in keys]
             else:
                 for key in categorical_label_counter.keys():
                     if key not in self._label_vocab:
-                        raise ValueError('The entity label="{}" is not found in the provided '
-                                         'vocabulary. The provided labels="{}"'
-                                         .format(key,
-                                                 self._label_vocab.all_tokens))
-                self._label_freq = [categorical_label_counter[ele]
-                                    for ele in self._label_vocab.all_tokens]
+                        raise ValueError(
+                            'The entity label="{}" is not found in the provided '
+                            'vocabulary. The provided labels="{}"'.format(
+                                key, self._label_vocab.all_tokens
+                            )
+                        )
+                self._label_freq = [
+                    categorical_label_counter[ele]
+                    for ele in self._label_vocab.all_tokens
+                ]
 
     def info(self):
-        additional_attributes = [('parent', '"{}"'.format(self._parent)),
-                                 ('#total entity', self.num_total_entity),
-                                 ('num entity per sample',
-                                  '{:.2f}'.format(self.avg_entity_per_sample)),
-                                 ('avg span length', '{:.2f}'.format(self._avg_span_length))]
+        additional_attributes = [
+            ("parent", '"{}"'.format(self._parent)),
+            ("#total entity", self.num_total_entity),
+            ("num entity per sample", "{:.2f}".format(self.avg_entity_per_sample)),
+            ("avg span length", "{:.2f}".format(self._avg_span_length)),
+        ]
         if self.label_type == _C.CATEGORICAL:
-            additional_attributes.append(('num categories', len(self.label_keys)))
-            additional_attributes.append(('max/min freq',
-                                          '{}/{}'.format(max(self.label_freq),
-                                                         min(self.label_freq))))
+            additional_attributes.append(("num categories", len(self.label_keys)))
+            additional_attributes.append(
+                (
+                    "max/min freq",
+                    "{}/{}".format(max(self.label_freq), min(self.label_freq)),
+                )
+            )
         elif self.label_type == _C.NUMERICAL:
-            additional_attributes.append(('label_shape', self.label_shape))
+            additional_attributes.append(("label_shape", self.label_shape))
         return super().info(additional_attributes)
 
 
 def get_column_property_metadata(column_properties):
     metadata = dict()
     for col_name, col_prop in column_properties.items():
-        metadata[col_name] = {'type': col_prop.type,
-                              'attrs': col_prop.get_attributes()}
+        metadata[col_name] = {"type": col_prop.type, "attrs": col_prop.get_attributes()}
     return metadata
 
 
@@ -620,13 +650,13 @@ def get_column_properties_from_metadata(metadata):
     if metadata is None:
         return column_properties
     if isinstance(metadata, str):
-        with open(metadata, 'r', encoding='utf-8') as f:
+        with open(metadata, "r", encoding="utf-8") as f:
             metadata = json.load(f)
     else:
         assert isinstance(metadata, dict)
     for col_name in metadata:
-        col_type = metadata[col_name]['type']
-        col_attrs = metadata[col_name]['attrs']
+        col_type = metadata[col_name]["type"]
+        col_attrs = metadata[col_name]["attrs"]
         if col_type == _C.TEXT:
             column_properties[col_name] = TextColumnProperty(**col_attrs)
         elif col_type == _C.ENTITY:
@@ -636,6 +666,7 @@ def get_column_properties_from_metadata(metadata):
         elif col_type == _C.CATEGORICAL:
             column_properties[col_name] = CategoricalColumnProperty(**col_attrs)
         else:
-            raise KeyError('Column type is not supported.'
-                           ' Type="{}"'.format(col_type))
+            raise KeyError(
+                "Column type is not supported." ' Type="{}"'.format(col_type)
+            )
     return column_properties

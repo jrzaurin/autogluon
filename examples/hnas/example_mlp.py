@@ -47,12 +47,12 @@ logging.basicConfig(level=logging.INFO)
 @ag.args(
     n_units_1=ag.space.Int(lower=4, upper=1024),
     n_units_2=ag.space.Int(lower=4, upper=1024),
-    dropout_1=ag.space.Real(lower=0, upper=.99),
-    dropout_2=ag.space.Real(lower=0, upper=.99),
+    dropout_1=ag.space.Real(lower=0, upper=0.99),
+    dropout_2=ag.space.Real(lower=0, upper=0.99),
     learning_rate=ag.space.Real(lower=1e-6, upper=1, log=True),
     batch_size=ag.space.Int(lower=8, upper=128),
     wd=ag.space.Real(lower=1e-8, upper=1, log=True),
-    epochs=27
+    epochs=27,
 )
 def objective_function(args, reporter):
     ts_start = time.time()
@@ -72,8 +72,9 @@ def objective_function(args, reporter):
     #
     # Downloading the data inside the objective function might lead to crashes
     # of the python process (at least on MAC OS).
-    data_train = datasets.MNIST(root='data', train=True,
-                                download=False, transform=transforms.ToTensor())
+    data_train = datasets.MNIST(
+        root="data", train=True, download=False, transform=transforms.ToTensor()
+    )
 
     # We use 50000 samples for training and 10000 samples for validation
     indices = list(range(data_train.data.shape[0]))
@@ -81,10 +82,12 @@ def objective_function(args, reporter):
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
 
-    train_loader = torch.utils.data.DataLoader(data_train, batch_size=batch_size,
-                                               sampler=train_sampler, drop_last=True)
-    valid_loader = torch.utils.data.DataLoader(data_train, batch_size=batch_size,
-                                               sampler=valid_sampler, drop_last=True)
+    train_loader = torch.utils.data.DataLoader(
+        data_train, batch_size=batch_size, sampler=train_sampler, drop_last=True
+    )
+    valid_loader = torch.utils.data.DataLoader(
+        data_train, batch_size=batch_size, sampler=valid_sampler, drop_last=True
+    )
 
     # Define the network architecture
     model = nn.Sequential(
@@ -94,7 +97,7 @@ def objective_function(args, reporter):
         nn.Linear(n_units_1, n_units_2),
         nn.Dropout(p=dropout_2),
         nn.ReLU(),
-        nn.Linear(n_units_2, 10)
+        nn.Linear(n_units_2, 10),
     )
 
     # Define the SGD optimizer
@@ -130,7 +133,7 @@ def objective_function(args, reporter):
         if curr_best is None or acc > curr_best:
             curr_best = acc
             print("checkpoint model")
-            torch.save(model.state_dict(), 'model_checkpoint')
+            torch.save(model.state_dict(), "model_checkpoint")
 
         # We also report the hyperparameter configuration back to AutoGluon,
         # so we can process it later in the callback function, for example for visualization.
@@ -149,7 +152,9 @@ def objective_function(args, reporter):
             epoch=epoch + 1,
             performance=float(curr_best),
             eval_time=eval_time,
-            time_step=ts_now, **config)
+            time_step=ts_now,
+            **config
+        )
 
 
 def callback(training_history, start_timestamp):
@@ -159,6 +164,7 @@ def callback(training_history, start_timestamp):
     # If you don't care about analyzing performance of AutoGluon online, you can also ignore this callback function and
     # just save the training history after AutoGluon has finished.
     import pandas as pd
+
     task_dfs = []
 
     # this function need to be changed if you return something else than accuracy
@@ -170,10 +176,12 @@ def callback(training_history, start_timestamp):
 
     for task_id in training_history:
         task_df = pd.DataFrame(training_history[task_id])
-        task_df = task_df.assign(task_id=task_id,
-                                 runtime=compute_runtime(task_df, start_timestamp),
-                                 error=compute_error(task_df),
-                                 target_epoch=task_df["epoch"].iloc[-1])
+        task_df = task_df.assign(
+            task_id=task_id,
+            runtime=compute_runtime(task_df, start_timestamp),
+            error=compute_error(task_df),
+            target_epoch=task_df["epoch"].iloc[-1],
+        )
         task_dfs.append(task_df)
 
     result = pd.concat(task_dfs, axis="index", ignore_index=True, sort=True)
@@ -189,34 +197,76 @@ def callback(training_history, start_timestamp):
 
 # CLI
 def parse_args():
-    parser = argparse.ArgumentParser(description='Runs autogluon to optimize '
-                                                 'the hyperparameters of a simple MLP of MNIST ')
-    parser.add_argument('--num_trials', default=10, type=int,
-                        help='number of trial tasks. It is enough to either set num_trials or timout.')
-    parser.add_argument('--timeout', default=1000, type=int,
-                        help='runtime of autogluon in seconds. It is enough to either set num_trials or timout.')
-    parser.add_argument('--num_gpus', type=int, default=0,
-                        help='number of GPUs available to a given trial.')
-    parser.add_argument('--num_cpus', type=int, default=2,
-                        help='number of CPUs available to a given trial.')
-    parser.add_argument('--hostfile', type=argparse.FileType('r'))
-    parser.add_argument('--store_results_period', type=int, default=100,
-                        help='If specified, results are stored in intervals of '
-                             'this many seconds (they are always stored at '
-                             'the end)')
-    parser.add_argument('--scheduler', type=str, default='hyperband_promotion',
-                        choices=['hyperband_stopping', 'hyperband_promotion'],
-                        help='Asynchronous scheduler type. In case of doubt leave it to the default')
-    parser.add_argument('--reduction_factor', type=int, default=3,
-                        help='Reduction factor for successive halving')
-    parser.add_argument('--brackets', type=int, default=1,
-                        help='Number of brackets. Setting the number of brackets to 1 means '
-                             'that we run effectively successive halving')
-    parser.add_argument('--min_resource_level', type=int, default=1,
-                        help='Minimum resource level (i.e epochs) on which a configuration is evaluated on.')
-    parser.add_argument('--searcher', type=str, default='bayesopt',
-                        choices=['random', 'bayesopt'],
-                        help='searcher to sample new configurations')
+    parser = argparse.ArgumentParser(
+        description="Runs autogluon to optimize "
+        "the hyperparameters of a simple MLP of MNIST "
+    )
+    parser.add_argument(
+        "--num_trials",
+        default=10,
+        type=int,
+        help="number of trial tasks. It is enough to either set num_trials or timout.",
+    )
+    parser.add_argument(
+        "--timeout",
+        default=1000,
+        type=int,
+        help="runtime of autogluon in seconds. It is enough to either set num_trials or timout.",
+    )
+    parser.add_argument(
+        "--num_gpus",
+        type=int,
+        default=0,
+        help="number of GPUs available to a given trial.",
+    )
+    parser.add_argument(
+        "--num_cpus",
+        type=int,
+        default=2,
+        help="number of CPUs available to a given trial.",
+    )
+    parser.add_argument("--hostfile", type=argparse.FileType("r"))
+    parser.add_argument(
+        "--store_results_period",
+        type=int,
+        default=100,
+        help="If specified, results are stored in intervals of "
+        "this many seconds (they are always stored at "
+        "the end)",
+    )
+    parser.add_argument(
+        "--scheduler",
+        type=str,
+        default="hyperband_promotion",
+        choices=["hyperband_stopping", "hyperband_promotion"],
+        help="Asynchronous scheduler type. In case of doubt leave it to the default",
+    )
+    parser.add_argument(
+        "--reduction_factor",
+        type=int,
+        default=3,
+        help="Reduction factor for successive halving",
+    )
+    parser.add_argument(
+        "--brackets",
+        type=int,
+        default=1,
+        help="Number of brackets. Setting the number of brackets to 1 means "
+        "that we run effectively successive halving",
+    )
+    parser.add_argument(
+        "--min_resource_level",
+        type=int,
+        default=1,
+        help="Minimum resource level (i.e epochs) on which a configuration is evaluated on.",
+    )
+    parser.add_argument(
+        "--searcher",
+        type=str,
+        default="bayesopt",
+        choices=["random", "bayesopt"],
+        help="searcher to sample new configurations",
+    )
     args = parser.parse_args()
     return args
 
@@ -242,29 +292,30 @@ if __name__ == "__main__":
     elif args.scheduler == "hyperband_promotion":
         hyperband_type = "promotion"
 
-    scheduler = ag.scheduler.HyperbandScheduler(objective_function,
-                                                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-                                                # Autogluon runs until it either reaches num_trials or time_out
-                                                num_trials=args.num_trials,
-                                                time_out=args.timeout,
-                                                # This argument defines the metric that will be maximized.
-                                                # Make sure that you report this back in the objective function.
-                                                reward_attr='performance',
-                                                # The metric along we make scheduling decision. Needs to be also
-                                                # reported back to AutoGluon in the objective function.
-                                                time_attr='epoch',
-                                                brackets=args.brackets,
-                                                checkpoint=None,
-                                                searcher=args.searcher,  # Defines searcher for new configurations
-                                                dist_ip_addrs=dist_ip_addrs,
-                                                training_history_callback=callback,
-                                                training_history_callback_delta_secs=args.store_results_period,
-                                                reduction_factor=args.reduction_factor,
-                                                type=hyperband_type,
-                                                # defines the minimum resource level for Hyperband,
-                                                # i.e the minimum number of epochs
-                                                grace_period=args.min_resource_level
-                                                )
+    scheduler = ag.scheduler.HyperbandScheduler(
+        objective_function,
+        resource={"num_cpus": args.num_cpus, "num_gpus": args.num_gpus},
+        # Autogluon runs until it either reaches num_trials or time_out
+        num_trials=args.num_trials,
+        time_out=args.timeout,
+        # This argument defines the metric that will be maximized.
+        # Make sure that you report this back in the objective function.
+        reward_attr="performance",
+        # The metric along we make scheduling decision. Needs to be also
+        # reported back to AutoGluon in the objective function.
+        time_attr="epoch",
+        brackets=args.brackets,
+        checkpoint=None,
+        searcher=args.searcher,  # Defines searcher for new configurations
+        dist_ip_addrs=dist_ip_addrs,
+        training_history_callback=callback,
+        training_history_callback_delta_secs=args.store_results_period,
+        reduction_factor=args.reduction_factor,
+        type=hyperband_type,
+        # defines the minimum resource level for Hyperband,
+        # i.e the minimum number of epochs
+        grace_period=args.min_resource_level,
+    )
     scheduler.run()
     scheduler.join_jobs()
 

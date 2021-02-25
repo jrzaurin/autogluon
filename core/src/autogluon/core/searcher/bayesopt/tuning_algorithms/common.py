@@ -32,8 +32,10 @@ class RandomStatefulCandidateGenerator(CandidateGenerator):
     sequences are returned.
 
     """
-    def __init__(self, hp_ranges: HyperparameterRanges,
-                 random_state: np.random.RandomState):
+
+    def __init__(
+        self, hp_ranges: HyperparameterRanges, random_state: np.random.RandomState
+    ):
         self.hp_ranges = hp_ranges
         self.random_state = random_state
 
@@ -46,8 +48,11 @@ class RandomStatefulCandidateGenerator(CandidateGenerator):
 
 
 def compute_blacklisted_candidates(state: TuningJobState) -> Set[Candidate]:
-    return set([x.candidate for x in state.candidate_evaluations] + \
-               state.pending_candidates + state.failed_candidates)
+    return set(
+        [x.candidate for x in state.candidate_evaluations]
+        + state.pending_candidates
+        + state.failed_candidates
+    )
 
 
 MAX_RETRIES_ON_DUPLICATES = 10000
@@ -56,8 +61,10 @@ MAX_RETRIES_ON_DUPLICATES = 10000
 # ATTENTION: If this is used with Candidate = CS.Configuration, the overhead
 # for filtering out duplicates and blacklisted configs becomes large
 def generate_unique_candidates(
-        candidates_generator: CandidateGenerator, num_candidates: int,
-        blacklisted_candidates: Set[Candidate]) -> List[Candidate]:
+    candidates_generator: CandidateGenerator,
+    num_candidates: int,
+    blacklisted_candidates: Set[Candidate],
+) -> List[Candidate]:
     blacklisted = set(blacklisted_candidates)  # copy
     result = []
     num_results = 0

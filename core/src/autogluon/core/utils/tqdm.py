@@ -3,7 +3,7 @@ from .miscs import in_ipynb
 
 from tqdm import tqdm as base
 
-__all__ = ['tqdm']
+__all__ = ["tqdm"]
 
 
 if True:  # pragma: no cover
@@ -12,25 +12,25 @@ if True:  # pragma: no cover
     IPYW = 0
     try:  # IPython 4.x
         import ipywidgets
+
         IPY = 4
         try:
-            IPYW = int(ipywidgets.__version__.split('.')[0])
+            IPYW = int(ipywidgets.__version__.split(".")[0])
         except AttributeError:  # __version__ may not exist in old versions
             pass
     except ImportError:  # IPython 3.x / 2.x
         IPY = 32
         import warnings
+
         with warnings.catch_warnings():
-            ipy_deprecation_msg = "The `IPython.html` package" \
-                                  " has been deprecated"
-            warnings.filterwarnings('error',
-                                    message=".*" + ipy_deprecation_msg + ".*")
+            ipy_deprecation_msg = "The `IPython.html` package" " has been deprecated"
+            warnings.filterwarnings("error", message=".*" + ipy_deprecation_msg + ".*")
             try:
                 import IPython.html.widgets as ipywidgets
             except Warning as e:
                 if ipy_deprecation_msg not in str(e):
                     raise
-                warnings.simplefilter('ignore')
+                warnings.simplefilter("ignore")
                 try:
                     import IPython.html.widgets as ipywidgets  # NOQA
                 except ImportError:
@@ -41,6 +41,7 @@ if True:  # pragma: no cover
     try:  # IPython 4.x / 3.x
         if IPY == 32:
             from IPython.html.widgets import IntProgress, HBox, HTML, VBox
+
             IPY = 3
         else:
             from ipywidgets import IntProgress, HBox, HTML, VBox
@@ -49,6 +50,7 @@ if True:  # pragma: no cover
             from IPython.html.widgets import IntProgressWidget as IntProgress
             from IPython.html.widgets import ContainerWidget as HBox
             from IPython.html.widgets import HTML
+
             IPY = 2
         except ImportError:
             IPY = 0
@@ -85,18 +87,19 @@ class mytqdm(base):
             else:  # No total? Show info style bar with no progress tqdm status
                 pbar = IntProgress(min=0, max=1)
                 pbar.value = 1
-                pbar.bar_style = 'info'
+                pbar.bar_style = "info"
         except NameError:
             # #187 #451 #558
             raise ImportError(
                 "IntProgress not found. Please update jupyter and ipywidgets."
                 " See https://ipywidgets.readthedocs.io/en/stable"
-                "/user_install.html")
+                "/user_install.html"
+            )
 
         if desc:
             pbar.description = desc
             if IPYW >= 7:
-                pbar.style.description_width = 'initial'
+                pbar.style.description_width = "initial"
         # Prepare status text
         ptext = HTML()
         timg = HTML()
@@ -110,20 +113,25 @@ class mytqdm(base):
             ncols = str(ncols)  # ipywidgets only accepts string
             try:
                 if int(ncols) > 0:  # isnumeric and positive
-                    ncols += 'px'
+                    ncols += "px"
             except ValueError:
                 pass
-            pbar.layout.flex = '2'
+            pbar.layout.flex = "2"
             container.layout.width = ncols
-            container.layout.display = 'inline-flex'
-            container.layout.flex_flow = 'row wrap'
+            container.layout.display = "inline-flex"
+            container.layout.flex_flow = "row wrap"
         display(container)
 
         return container
 
-    def display(self, msg=None, pos=None,
-                # additional signals
-                close=False, bar_style=None):
+    def display(
+        self,
+        msg=None,
+        pos=None,
+        # additional signals
+        close=False,
+        bar_style=None,
+    ):
         # Note: contrary to native tqdm, msg='' does NOT clear bar
         # goal is to keep all infos if error happens so user knows
         # at which iteration the loop failed.
@@ -143,21 +151,21 @@ class mytqdm(base):
 
         if msg:
             # html escape special characters (like '&')
-            if '<bar/>' in msg:
-                left, right = map(escape, msg.split('<bar/>', 1))
+            if "<bar/>" in msg:
+                left, right = map(escape, msg.split("<bar/>", 1))
             else:
-                left, right = '', escape(msg)
+                left, right = "", escape(msg)
 
             # remove inesthetical pipes
-            if left and left[-1] == '|':
+            if left and left[-1] == "|":
                 left = left[:-1]
-            if right and right[0] == '|':
+            if right and right[0] == "|":
                 right = right[1:]
 
             # Update description
             pbar.description = left
             if IPYW >= 7:
-                pbar.style.description_width = 'initial'
+                pbar.style.description_width = "initial"
 
             # never clear the bar (signal: msg='')
             if right:
@@ -167,11 +175,11 @@ class mytqdm(base):
         if bar_style:
             # Hack-ish way to avoid the danger bar_style being overridden by
             # success because the bar gets closed after the error...
-            if not (pbar.bar_style == 'danger' and bar_style == 'success'):
+            if not (pbar.bar_style == "danger" and bar_style == "success"):
                 pbar.bar_style = bar_style
 
         # Special signal to close the bar
-        if close and pbar.bar_style != 'danger':  # hide only if no error
+        if close and pbar.bar_style != "danger":  # hide only if no error
             try:
                 self.container.close()
             except AttributeError:
@@ -182,27 +190,28 @@ class mytqdm(base):
 
     def __init__(self, *args, **kwargs):
         # Setup default output
-        file_kwarg = kwargs.get('file', sys.stderr)
+        file_kwarg = kwargs.get("file", sys.stderr)
         if file_kwarg is sys.stderr or file_kwarg is None:
-            kwargs['file'] = sys.stdout  # avoid the red block in IPython
+            kwargs["file"] = sys.stdout  # avoid the red block in IPython
 
         # Initialize parent class + avoid printing by using gui=True
-        kwargs['gui'] = True
-        kwargs.setdefault('bar_format', '{l_bar}{bar}{r_bar}')
-        kwargs['bar_format'] = kwargs['bar_format'].replace('{bar}', '<bar/>')
+        kwargs["gui"] = True
+        kwargs.setdefault("bar_format", "{l_bar}{bar}{r_bar}")
+        kwargs["bar_format"] = kwargs["bar_format"].replace("{bar}", "<bar/>")
         super(mytqdm, self).__init__(*args, **kwargs)
-        if self.disable or not kwargs['gui']:
+        if self.disable or not kwargs["gui"]:
             return
 
         # Get bar width
-        self.ncols = '100%' if self.dynamic_ncols else kwargs.get("ncols", None)
+        self.ncols = "100%" if self.dynamic_ncols else kwargs.get("ncols", None)
 
         # Replace with IPython progress bar display (with correct total)
         unit_scale = 1 if self.unit_scale is True else self.unit_scale or 1
         total = self.total * unit_scale if self.total else self.total
         self.img = None
         self.container = self.status_printer(
-            self.fp, total, self.desc, self.ncols, self.img)
+            self.fp, total, self.desc, self.ncols, self.img
+        )
         self.sp = self.display
 
         # Print initial bar state
@@ -216,7 +225,7 @@ class mytqdm(base):
                 yield obj
         # NB: except ... [ as ...] breaks IPython async KeyboardInterrupt
         except:  # NOQA
-            self.sp(bar_style='danger')
+            self.sp(bar_style="danger")
             raise
 
     def update(self, *args, **kwargs):
@@ -225,20 +234,20 @@ class mytqdm(base):
         except Exception as exc:
             # cannot catch KeyboardInterrupt when using manual tqdm
             # as the interrupt will most likely happen on another statement
-            self.sp(bar_style='danger')
+            self.sp(bar_style="danger")
             raise exc
 
     def close(self, *args, **kwargs):
         super(mytqdm, self).close(*args, **kwargs)
         # If it was not run in a notebook, sp is not assigned, check for it
-        if hasattr(self, 'sp'):
+        if hasattr(self, "sp"):
             # Try to detect if there was an error or KeyboardInterrupt
             # in manual mode: if n < total, things probably got wrong
             if self.total and self.n < self.total:
-                self.sp(bar_style='danger')
+                self.sp(bar_style="danger")
             else:
                 if self.leave:
-                    self.sp(bar_style='success')
+                    self.sp(bar_style="success")
                 else:
                     self.sp(close=True)
 

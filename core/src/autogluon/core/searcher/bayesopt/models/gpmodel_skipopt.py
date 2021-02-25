@@ -10,6 +10,7 @@ class SkipOptimizationPredicate(ABC):
     Interface for skip_optimization predicate in GPMXNetModel
 
     """
+
     def reset(self):
         """
         If there is an internal state, reset it to its initial value
@@ -30,6 +31,7 @@ class NeverSkipPredicate(SkipOptimizationPredicate):
     Hyperparameter optimization is never skipped.
 
     """
+
     def __call__(self, state: TuningJobState) -> bool:
         return False
 
@@ -39,6 +41,7 @@ class AlwaysSkipPredicate(SkipOptimizationPredicate):
     Hyperparameter optimization is always skipped.
 
     """
+
     def __call__(self, state: TuningJobState) -> bool:
         return True
 
@@ -53,6 +56,7 @@ class SkipPeriodicallyPredicate(SkipOptimizationPredicate):
     __call__ may not be called for every value of N in sequence!
 
     """
+
     def __init__(self, init_length: int, period: int):
         assert init_length >= 0
         assert period > 1
@@ -66,10 +70,9 @@ class SkipPeriodicallyPredicate(SkipOptimizationPredicate):
 
     def __call__(self, state: TuningJobState) -> bool:
         num_labeled = len(state.candidate_evaluations)
-        assert self.lastrec_key is None or \
-            num_labeled >= self.lastrec_key, \
-            "num_labeled = {} < {} = lastrec_key".format(
-                num_labeled, self.lastrec_key)
+        assert (
+            self.lastrec_key is None or num_labeled >= self.lastrec_key
+        ), "num_labeled = {} < {} = lastrec_key".format(num_labeled, self.lastrec_key)
         # self.lastrec_XYZ is needed in order to allow __call__
         # to be called several times with the same num_labeled
         if num_labeled == self.lastrec_key:
@@ -80,8 +83,11 @@ class SkipPeriodicallyPredicate(SkipOptimizationPredicate):
             # At this point, we passed current_bound, so should do the
             # optimization
             # Smallest init_length + k*period > num_labeled:
-            self.current_bound = num_labeled + self.period -\
-                ((num_labeled - self.init_length) % self.period)
+            self.current_bound = (
+                num_labeled
+                + self.period
+                - ((num_labeled - self.init_length) % self.period)
+            )
             ret_value = False
         self.lastrec_key = num_labeled
         self.lastrec_value = ret_value
@@ -102,8 +108,8 @@ class SkipNoMaxResourcePredicate(SkipOptimizationPredicate):
     resources than max_resource, this does not trigger HP optimization.
 
     """
-    def __init__(self, init_length: int, resource_attr_name: str,
-                 max_resource: int):
+
+    def __init__(self, init_length: int, resource_attr_name: str, max_resource: int):
         assert init_length >= 0
         self.init_length = init_length
         self.resource_attr_name = resource_attr_name
@@ -115,22 +121,23 @@ class SkipNoMaxResourcePredicate(SkipOptimizationPredicate):
 
     def _num_max_resource_cases(self, state: TuningJobState):
         def is_max_resource(config: Candidate) -> int:
-            if isinstance(config, CS.Configuration) and \
-                    (config.get_dictionary()[self.resource_attr_name] ==
-                     self.max_resource):
+            if isinstance(config, CS.Configuration) and (
+                config.get_dictionary()[self.resource_attr_name] == self.max_resource
+            ):
                 return 1
             else:
                 return 0
 
-        return sum(is_max_resource(x.candidate)
-                   for x in state.candidate_evaluations)
+        return sum(is_max_resource(x.candidate) for x in state.candidate_evaluations)
 
     def __call__(self, state: TuningJobState) -> bool:
         if len(state.candidate_evaluations) < self.init_length:
             return False
         num_max_resource_cases = self._num_max_resource_cases(state)
-        if self.lastrec_max_resource_cases is None or \
-                num_max_resource_cases > self.lastrec_max_resource_cases:
+        if (
+            self.lastrec_max_resource_cases is None
+            or num_max_resource_cases > self.lastrec_max_resource_cases
+        ):
             self.lastrec_max_resource_cases = num_max_resource_cases
             return False
         else:

@@ -23,17 +23,19 @@ class MeanStdAcquisitionFunction(AcquisitionFunction, ABC):
     NOTE that acquisition functions will always be *minimized*!
 
     """
+
     def __init__(self, model: SurrogateModel):
         super(MeanStdAcquisitionFunction, self).__init__(model)
-        assert 'mean' in model.keys_predict()
-        assert 'std' in model.keys_predict()
+        assert "mean" in model.keys_predict()
+        assert "std" in model.keys_predict()
 
-    def compute_acq(self, inputs: np.ndarray,
-                    model: Optional[SurrogateModel] = None) -> np.ndarray:
+    def compute_acq(
+        self, inputs: np.ndarray, model: Optional[SurrogateModel] = None
+    ) -> np.ndarray:
         if model is None:
             model = self.model
-        assert 'mean' in model.keys_predict()
-        assert 'std' in model.keys_predict()
+        assert "mean" in model.keys_predict()
+        assert "std" in model.keys_predict()
 
         if inputs.ndim == 1:
             inputs = inputs.reshape((1, -1))
@@ -45,15 +47,17 @@ class MeanStdAcquisitionFunction(AcquisitionFunction, ABC):
         fvals_list = []
         # Loop over MCMC samples (if any)
         for predictions, current_best in zip(predictions_list, current_best_list):
-            means = predictions['mean']
-            stds = predictions['std']
+            means = predictions["mean"]
+            stds = predictions["std"]
             num_fantasies = means.shape[1] if means.ndim == 2 else 1
             if num_fantasies > 1:
                 stds = stds.reshape((-1, 1))
                 if current_best is not None:
-                    assert current_best.size == num_fantasies, \
-                        "mean.shape[1] = {}, current_best.size = {} (must be the same)".format(
-                            num_fantasies, current_best.size)
+                    assert (
+                        current_best.size == num_fantasies
+                    ), "mean.shape[1] = {}, current_best.size = {} (must be the same)".format(
+                        num_fantasies, current_best.size
+                    )
                     current_best = current_best.reshape((1, -1))
             else:
                 means = means.reshape((-1,))
@@ -69,13 +73,12 @@ class MeanStdAcquisitionFunction(AcquisitionFunction, ABC):
         return np.mean(fvals_list, axis=0)
 
     def compute_acq_with_gradient(
-            self, input: np.ndarray,
-            model: Optional[SurrogateModel] = None) -> \
-            Tuple[float, np.ndarray]:
+        self, input: np.ndarray, model: Optional[SurrogateModel] = None
+    ) -> Tuple[float, np.ndarray]:
         if model is None:
             model = self.model
-        assert 'mean' in model.keys_predict()
-        assert 'std' in model.keys_predict()
+        assert "mean" in model.keys_predict()
+        assert "std" in model.keys_predict()
 
         predictions_list = model.predict(input.reshape(1, -1))
         if self._head_needs_current_best():
@@ -86,9 +89,9 @@ class MeanStdAcquisitionFunction(AcquisitionFunction, ABC):
         head_gradients = []
 
         for predictions, current_best in zip(predictions_list, current_best_list):
-            mean = predictions['mean'].reshape((-1,))
+            mean = predictions["mean"].reshape((-1,))
             num_fantasies = mean.size
-            std = predictions['std'].reshape((1,))
+            std = predictions["std"].reshape((1,))
             if current_best is not None:
                 assert current_best.size == num_fantasies
                 current_best = current_best.reshape((-1,))
@@ -99,11 +102,15 @@ class MeanStdAcquisitionFunction(AcquisitionFunction, ABC):
             # num_fantasies > 1), which is not done in
             # _compute_head_and_gradient (dh_dmean, dh_dstd have the same shape
             # as mean), so have to divide by num_fantasies
-            head_gradients.append({
-                'mean': head_result.dh_dmean.reshape(
-                    predictions['mean'].shape) / num_fantasies,
-                'std': np.array([np.mean(head_result.dh_dstd)]).reshape(
-                    predictions['std'].shape)})
+            head_gradients.append(
+                {
+                    "mean": head_result.dh_dmean.reshape(predictions["mean"].shape)
+                    / num_fantasies,
+                    "std": np.array([np.mean(head_result.dh_dstd)]).reshape(
+                        predictions["std"].shape
+                    ),
+                }
+            )
 
         # Gradients are computed by the model
         gradient_list = model.backward_gradient(input, head_gradients)
@@ -121,8 +128,8 @@ class MeanStdAcquisitionFunction(AcquisitionFunction, ABC):
 
     @abstractmethod
     def _compute_heads(
-            self, means: np.ndarray, stds: np.ndarray,
-            current_best: Optional[np.ndarray]) -> np.ndarray:
+        self, means: np.ndarray, stds: np.ndarray, current_best: Optional[np.ndarray]
+    ) -> np.ndarray:
         """
         If mean has >1 columns, both std and current_best are supposed to be
         broadcasted. The return value has the same shape as mean.
@@ -136,8 +143,8 @@ class MeanStdAcquisitionFunction(AcquisitionFunction, ABC):
 
     @abstractmethod
     def _compute_head_and_gradient(
-            self, mean: np.ndarray, std: np.ndarray,
-            current_best: Optional[np.ndarray]) -> HeadWithGradient:
+        self, mean: np.ndarray, std: np.ndarray, current_best: Optional[np.ndarray]
+    ) -> HeadWithGradient:
         """
         Computes both head value and head gradients, for a single input.
 
@@ -155,6 +162,7 @@ class EIAcquisitionFunction(MeanStdAcquisitionFunction):
     (minus because the convention is to always minimize acquisition functions)
 
     """
+
     def __init__(self, model: SurrogateModel, jitter: float = 0.01):
         super().__init__(model)
         self.jitter = jitter
@@ -163,8 +171,8 @@ class EIAcquisitionFunction(MeanStdAcquisitionFunction):
         return True
 
     def _compute_heads(
-            self, means: np.ndarray, stds: np.ndarray,
-            current_best: Optional[np.ndarray]) -> np.ndarray:
+        self, means: np.ndarray, stds: np.ndarray, current_best: Optional[np.ndarray]
+    ) -> np.ndarray:
         assert current_best is not None
 
         # phi, Phi is PDF and CDF of Gaussian
@@ -172,17 +180,14 @@ class EIAcquisitionFunction(MeanStdAcquisitionFunction):
         return (-stds) * (u * Phi + phi)
 
     def _compute_head_and_gradient(
-            self, mean: np.ndarray, std: np.ndarray,
-            current_best: Optional[np.ndarray]) -> HeadWithGradient:
+        self, mean: np.ndarray, std: np.ndarray, current_best: Optional[np.ndarray]
+    ) -> HeadWithGradient:
         assert current_best is not None
 
         # phi, Phi is PDF and CDF of Gaussian
         phi, Phi, u = get_quantiles(self.jitter, current_best, mean, std)
         f_acqu = std * (u * Phi + phi)
-        return HeadWithGradient(
-            hvals=-f_acqu,
-            dh_dmean=Phi,
-            dh_dstd=-phi)
+        return HeadWithGradient(hvals=-f_acqu, dh_dmean=Phi, dh_dstd=-phi)
 
 
 class LCBAcquisitionFunction(MeanStdAcquisitionFunction):
@@ -192,24 +197,26 @@ class LCBAcquisitionFunction(MeanStdAcquisitionFunction):
         h(mean, std) = mean - kappa * std
 
     """
+
     def __init__(self, model: SurrogateModel, kappa: float):
         super().__init__(model)
-        assert kappa > 0, 'kappa must be positive'
+        assert kappa > 0, "kappa must be positive"
         self.kappa = kappa
 
     def _head_needs_current_best(self) -> bool:
         return False
 
     def _compute_heads(
-            self, means: np.ndarray, stds: np.ndarray,
-            current_best: Optional[np.ndarray]) -> np.ndarray:
+        self, means: np.ndarray, stds: np.ndarray, current_best: Optional[np.ndarray]
+    ) -> np.ndarray:
         return means - stds * self.kappa
 
     def _compute_head_and_gradient(
-            self, mean: np.ndarray, std: np.ndarray,
-            current_best: Optional[np.ndarray]) -> HeadWithGradient:
+        self, mean: np.ndarray, std: np.ndarray, current_best: Optional[np.ndarray]
+    ) -> HeadWithGradient:
         ones_like_mean = np.ones_like(mean)
         return HeadWithGradient(
             hvals=mean - std * self.kappa,
             dh_dmean=ones_like_mean,
-            dh_dstd=(-self.kappa) * ones_like_mean)
+            dh_dstd=(-self.kappa) * ones_like_mean,
+        )

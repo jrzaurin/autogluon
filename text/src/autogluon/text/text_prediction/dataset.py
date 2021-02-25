@@ -5,14 +5,19 @@ import pandas as pd
 import json
 from autogluon.core.utils.loaders import load_pd
 from . import constants as _C
-from .column_property import CategoricalColumnProperty, TextColumnProperty, NumericalColumnProperty,\
-    get_column_properties_from_metadata
+from .column_property import (
+    CategoricalColumnProperty,
+    TextColumnProperty,
+    NumericalColumnProperty,
+    get_column_properties_from_metadata,
+)
 from autogluon_contrib_nlp.base import INT_TYPES, FLOAT_TYPES, BOOL_TYPES
 from typing import List, Optional, Union, Dict, Tuple
 
 
-def random_split_train_val(df, valid_ratio=0.15,
-                           stratified=False, label=None, num_repeats=1, rng=None):
+def random_split_train_val(
+    df, valid_ratio=0.15, stratified=False, label=None, num_repeats=1, rng=None
+):
     """Randomly split a given dataset into train + valid dataset with stratified sampling.
 
     Parameters
@@ -44,7 +49,7 @@ def random_split_train_val(df, valid_ratio=0.15,
         rng = np.random.RandomState()
     if not stratified:
         num_total = len(df)
-        num_valid = np.ceil(num_total * valid_ratio).astype('int')
+        num_valid = np.ceil(num_total * valid_ratio).astype("int")
         indices = np.arange(num_total)
         if num_repeats == 1:
             rng.shuffle(indices)
@@ -60,14 +65,16 @@ def random_split_train_val(df, valid_ratio=0.15,
                 out.append((df.iloc[train_indices], df.iloc[valid_indices]))
             return out
     else:
-        raise NotImplementedError('Currently, stratified sampling is not supported.')
+        raise NotImplementedError("Currently, stratified sampling is not supported.")
 
 
-def is_categorical_column(data: pd.Series,
-                          threshold: int = 100,
-                          ratio: float = 0.1,
-                          is_label_columns: bool = False,
-                          default_allow_missing: bool = True) -> Tuple[bool, bool]:
+def is_categorical_column(
+    data: pd.Series,
+    threshold: int = 100,
+    ratio: float = 0.1,
+    is_label_columns: bool = False,
+    default_allow_missing: bool = True,
+) -> Tuple[bool, bool]:
     """Check whether the column is a categorical column.
 
     If the number of unique elements in the column is smaller than
@@ -93,7 +100,7 @@ def is_categorical_column(data: pd.Series,
         Whether the column is a categorical column
     parsed_allow_missing
     """
-    if data.dtype.name == 'category':
+    if data.dtype.name == "category":
         return True, default_allow_missing
     threshold = min(int(len(data) * ratio), threshold)
     sample_set = set()
@@ -109,7 +116,10 @@ def is_categorical_column(data: pd.Series,
             return True, default_allow_missing
     elif isinstance(element, INT_TYPES):
         value_counts = data.value_counts()
-        if value_counts.keys().min() == 0 and value_counts.keys().max() == len(value_counts) - 1:
+        if (
+            value_counts.keys().min() == 0
+            and value_counts.keys().max() == len(value_counts) - 1
+        ):
             return True, False
         else:
             return False, False
@@ -120,11 +130,12 @@ def is_categorical_column(data: pd.Series,
 
 
 def get_column_properties(
-        df: 'DataFrame',
-        label_columns: Optional[Union[str, List[str]]],
-        metadata: Optional[Dict] = None,
-        provided_column_properties: Optional[Dict] = None,
-        categorical_default_handle_missing_value: bool = True) -> collections.OrderedDict:
+    df: "DataFrame",
+    label_columns: Optional[Union[str, List[str]]],
+    metadata: Optional[Dict] = None,
+    provided_column_properties: Optional[Dict] = None,
+    categorical_default_handle_missing_value: bool = True,
+) -> collections.OrderedDict:
     """Inference the column types of the data frame
 
     Parameters
@@ -159,27 +170,38 @@ def get_column_properties(
     # Process all feature columns
     column_properties_from_metadata = get_column_properties_from_metadata(metadata)
     for col_name in df.columns:
-        if provided_column_properties is not None and col_name in provided_column_properties:
+        if (
+            provided_column_properties is not None
+            and col_name in provided_column_properties
+        ):
             column_properties[col_name] = provided_column_properties[col_name].clone()
             column_properties[col_name].parse(df[col_name])
             continue
         if col_name in column_properties_from_metadata:
-            column_properties[col_name] = column_properties_from_metadata[col_name].clone()
+            column_properties[col_name] = column_properties_from_metadata[
+                col_name
+            ].clone()
             column_properties[col_name].parse(df[col_name])
             continue
         idx = df[col_name].first_valid_index()
         if idx is None:
             # No valid index, it should have been handled previously
-            raise ValueError('Column Name="{}" has no valid data and is ignored.'.format(col_name))
+            raise ValueError(
+                'Column Name="{}" has no valid data and is ignored.'.format(col_name)
+            )
         ele = df[col_name][idx]
         # Try to inference the categorical column
-        if isinstance(ele, collections.abc.Hashable) and not isinstance(ele, FLOAT_TYPES):
+        if isinstance(ele, collections.abc.Hashable) and not isinstance(
+            ele, FLOAT_TYPES
+        ):
             # Try to tell if the column is a categorical column
             is_categorical, allow_missing = is_categorical_column(
-                df[col_name],
-                is_label_columns=col_name in label_columns_set)
+                df[col_name], is_label_columns=col_name in label_columns_set
+            )
             if is_categorical:
-                column_properties[col_name] = CategoricalColumnProperty(allow_missing=allow_missing)
+                column_properties[col_name] = CategoricalColumnProperty(
+                    allow_missing=allow_missing
+                )
                 column_properties[col_name].parse(df[col_name])
                 continue
         if isinstance(ele, str):
@@ -189,11 +211,17 @@ def get_column_properties(
         # Raise error if we find an entity column
         if isinstance(ele, list):
             if isinstance(ele[0], (tuple, dict)):
-                raise ValueError('An Entity column "{}" is found but no metadata is given.'
-                                 .format(col_name))
+                raise ValueError(
+                    'An Entity column "{}" is found but no metadata is given.'.format(
+                        col_name
+                    )
+                )
         elif isinstance(ele, dict):
-            raise ValueError('An Entity column "{}" is found but no metadata is given.'
-                             .format(col_name))
+            raise ValueError(
+                'An Entity column "{}" is found but no metadata is given.'.format(
+                    col_name
+                )
+            )
         column_properties[col_name] = NumericalColumnProperty()
         column_properties[col_name].parse(df[col_name])
     return column_properties
@@ -225,7 +253,7 @@ def normalize_df(df, convert_text_to_numerical=True, remove_none=True):
             if isinstance(val, str):
                 num_missing = col.isnull().sum().sum().item()
                 if num_missing > 0 and remove_none:
-                    col = col.fillna('')
+                    col = col.fillna("")
                     conversion_cols[col_name] = col
                 if convert_text_to_numerical:
                     try:
@@ -266,17 +294,20 @@ def infer_problem_type(column_properties, label_col_name):
     elif column_properties[label_col_name].type == _C.NUMERICAL:
         return _C.REGRESSION, column_properties[label_col_name].shape
     else:
-        raise NotImplementedError('Cannot infer the problem type')
+        raise NotImplementedError("Cannot infer the problem type")
 
 
 class TabularDataset:
-    def __init__(self, path_or_df: Union[str, pd.DataFrame],
-                 *,
-                 columns=None,
-                 label_columns=None,
-                 column_metadata: Optional[Union[str, Dict]] = None,
-                 column_properties: Optional[collections.OrderedDict] = None,
-                 categorical_default_handle_missing_value=True):
+    def __init__(
+        self,
+        path_or_df: Union[str, pd.DataFrame],
+        *,
+        columns=None,
+        label_columns=None,
+        column_metadata: Optional[Union[str, Dict]] = None,
+        column_properties: Optional[collections.OrderedDict] = None,
+        categorical_default_handle_missing_value=True
+    ):
         """
 
         Parameters
@@ -307,7 +338,7 @@ class TabularDataset:
         if column_metadata is None:
             column_metadata = dict()
         elif isinstance(column_metadata, str):
-            with open(column_metadata, 'r') as f:
+            with open(column_metadata, "r") as f:
                 column_metadata = json.load(f)
         # Inference the column properties
         column_properties = get_column_properties(
@@ -315,10 +346,11 @@ class TabularDataset:
             metadata=column_metadata,
             label_columns=label_columns,
             provided_column_properties=column_properties,
-            categorical_default_handle_missing_value=categorical_default_handle_missing_value)
+            categorical_default_handle_missing_value=categorical_default_handle_missing_value,
+        )
         for col_name, prop in column_properties.items():
             if prop.type == _C.TEXT:
-                df[col_name] = df[col_name].fillna('').apply(str)
+                df[col_name] = df[col_name].fillna("").apply(str)
             elif prop.type == _C.NUMERICAL:
                 df[col_name] = df[col_name].fillna(-1).apply(np.array)
         self._table = df
@@ -337,8 +369,8 @@ class TabularDataset:
         return self._column_properties
 
     def __str__(self):
-        ret = 'Columns:\n\n'
+        ret = "Columns:\n\n"
         for col_name in self.column_properties.keys():
-            ret += '- ' + str(self.column_properties[col_name])
-        ret += '\n'
+            ret += "- " + str(self.column_properties[col_name])
+        ret += "\n"
         return ret

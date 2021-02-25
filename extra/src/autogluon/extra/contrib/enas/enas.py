@@ -5,19 +5,20 @@ from mxnet import gluon
 from autogluon.core.space import Categorical, Space, _strip_config_space
 
 import warnings
+
 warnings.filterwarnings("ignore", category=UserWarning)
 
-__all__ = ['enas_unit', 'enas_net',
-           'Zero_Unit', 'ENAS_Unit', 'ENAS_Sequential']
+__all__ = ["enas_unit", "enas_net", "Zero_Unit", "ENAS_Unit", "ENAS_Sequential"]
+
 
 def enas_unit(**kwvars):
     def registered_class(Cls):
         class enas_unit(ENAS_Unit):
             def __init__(self, *args, **kwargs):
                 kwvars.update(kwargs)
-                with_zero=False
-                if 'with_zero' in kwvars:
-                    with_zero = kwvars.pop('with_zero')
+                with_zero = False
+                if "with_zero" in kwvars:
+                    with_zero = kwvars.pop("with_zero")
                 blocks = []
                 self._args = []
                 for arg in self.get_config_grid(kwvars):
@@ -30,18 +31,27 @@ def enas_unit(**kwvars):
             @property
             def node(self):
                 arg = self._args[self.index]
-                if arg is None: return arg
+                if arg is None:
+                    return arg
                 summary = {}
-                name = self.module_list[self.index].__class__.__name__ + '('
+                name = self.module_list[self.index].__class__.__name__ + "("
                 for k, v in json.loads(arg).items():
-                    if 'kernel' in k.lower():
-                        cm = ("#8dd3c7", "#fb8072", "#ffffb3", "#bebada", "#80b1d3",
-                              "#fdb462", "#b3de69", "#fccde5")
-                        summary['fillcolor'] = cm[v]
+                    if "kernel" in k.lower():
+                        cm = (
+                            "#8dd3c7",
+                            "#fb8072",
+                            "#ffffb3",
+                            "#bebada",
+                            "#80b1d3",
+                            "#fdb462",
+                            "#b3de69",
+                            "#fccde5",
+                        )
+                        summary["fillcolor"] = cm[v]
                     k = k[:1].upper() if len(k) > 4 else k
-                    name += '{}{}.'.format(k, v)
-                name += ')'
-                summary['label'] = name
+                    name += "{}{}.".format(k, v)
+                name += ")"
+                summary["label"] = name
                 return summary
 
             @staticmethod
@@ -56,13 +66,16 @@ def enas_unit(**kwvars):
                     else:
                         constants[k] = v
                 from sklearn.model_selection import ParameterGrid
+
                 configs = list(ParameterGrid(param_grid))
                 for config in configs:
                     config.update(constants)
                 return configs
 
         return enas_unit
+
     return registered_class
+
 
 def enas_net(**kwvars):
     def registered_class(Cls):
@@ -81,7 +94,7 @@ def enas_net(**kwvars):
                         else:
                             assert isinstance(module, ENAS_Sequential)
                             for key, v in module.kwspaces.items():
-                                new_key = '{}.{}'.format(k, key)
+                                new_key = "{}.{}".format(k, key)
                                 self._kwspaces[new_key] = v
                 self.latency_evaluated = False
                 self._avg_latency = 1
@@ -109,32 +122,35 @@ def enas_net(**kwvars):
             @property
             def graph(self):
                 from graphviz import Digraph
-                e = Digraph(node_attr={'color': 'lightblue2', 'style': 'filled', 'shape': 'box'})
-                pre_node = 'input'
+
+                e = Digraph(
+                    node_attr={"color": "lightblue2", "style": "filled", "shape": "box"}
+                )
+                pre_node = "input"
                 e.node(pre_node)
                 for k, op in self._modules.items():
-                    if hasattr(op, 'graph'):
+                    if hasattr(op, "graph"):
                         e.subgraph(op.graph)
                         e.edge(pre_node, op.nodehead)
                         pre_node = op.nodeend
                     else:
-                        if hasattr(op, 'node'):
-                            if op.node is None: continue
+                        if hasattr(op, "node"):
+                            if op.node is None:
+                                continue
                             node_info = op.node
                         else:
-                            node_info = {'label': op.__class__.__name__}
+                            node_info = {"label": op.__class__.__name__}
                         e.node(k, **node_info)
                         e.edge(pre_node, k)
                         pre_node = k
                 return e
-
 
             @property
             def kwspaces(self):
                 return self._kwspaces
 
             def sample(self, **configs):
-                striped_keys = [k.split('.')[0] for k in configs.keys()]
+                striped_keys = [k.split(".")[0] for k in configs.keys()]
                 for k in striped_keys:
                     if isinstance(self._modules[k], ENAS_Unit):
                         self._modules[k].sample(configs[k])
@@ -145,30 +161,32 @@ def enas_net(**kwvars):
             @property
             def latency(self):
                 if not self.latency_evaluated:
-                    raise Exception('Latency is not evaluated yet.')
+                    raise Exception("Latency is not evaluated yet.")
                 return self._avg_latency
 
             @property
             def avg_latency(self):
                 if not self.latency_evaluated:
-                    raise Exception('Latency is not evaluated yet.')
+                    raise Exception("Latency is not evaluated yet.")
                 return self._avg_latency
 
             def evaluate_latency(self, x):
                 # evaluate submodule latency
                 for k, op in self._modules.items():
-                    if hasattr(op, 'evaluate_latency'):
+                    if hasattr(op, "evaluate_latency"):
                         x = op.evaluate_latency(x)
                 # calc avg_latency
                 avg_latency = 0.0
                 for k, op in self._modules.items():
-                    if hasattr(op, 'avg_latency'):
+                    if hasattr(op, "avg_latency"):
                         avg_latency += op.avg_latency
                 self._avg_latency = avg_latency
                 self.latency_evaluated = True
 
         return ENAS_Net
+
     return registered_class
+
 
 class ENAS_Sequential(gluon.HybridBlock):
     def __init__(self, *modules_list):
@@ -186,7 +204,7 @@ class ENAS_Sequential(gluon.HybridBlock):
             self._modules[str(i)] = op
             with self._blocks.name_scope():
                 self._blocks.add(op)
-            if hasattr(op, 'kwspaces'):
+            if hasattr(op, "kwspaces"):
                 self._kwspaces[str(i)] = op.kwspaces
         self.latency_evaluated = False
         self._avg_latency = 1
@@ -222,20 +240,24 @@ class ENAS_Sequential(gluon.HybridBlock):
     @property
     def graph(self):
         from graphviz import Digraph
-        e = Digraph(node_attr={'color': 'lightblue2', 'style': 'filled', 'shape': 'box'})
+
+        e = Digraph(
+            node_attr={"color": "lightblue2", "style": "filled", "shape": "box"}
+        )
         pre_node = None
         for i, op in self._modules.items():
-            if hasattr(op, 'graph'):
+            if hasattr(op, "graph"):
                 e.subgraph(op.graph)
                 if pre_node:
                     e.edge(pre_node, op.nodehead)
                 pre_node = op.nodeend
             else:
-                if hasattr(op, 'node'):
-                    if op.node is None: continue
+                if hasattr(op, "node"):
+                    if op.node is None:
+                        continue
                     node_info = op.node
                 else:
-                    node_info = {'label': op.__class__.__name__}
+                    node_info = {"label": op.__class__.__name__}
                 e.node(i, **node_info)
                 if pre_node:
                     e.edge(pre_node, i)
@@ -261,30 +283,30 @@ class ENAS_Sequential(gluon.HybridBlock):
     @property
     def latency(self):
         if not self.latency_evaluated:
-            raise Exception('Latency is not evaluated yet.')
+            raise Exception("Latency is not evaluated yet.")
         latency = 0.0
         for k, op in self._modules.items():
-            if hasattr(op, 'latency'):
+            if hasattr(op, "latency"):
                 latency += op.latency
         return latency
 
     @property
     def avg_latency(self):
         if not self.latency_evaluated:
-            raise Exception('Latency is not evaluated yet.')
+            raise Exception("Latency is not evaluated yet.")
         return self._avg_latency
 
     def evaluate_latency(self, x):
         # evaluate submodule latency
         for k, op in self._modules.items():
-            if hasattr(op, 'evaluate_latency'):
+            if hasattr(op, "evaluate_latency"):
                 x = op.evaluate_latency(x)
             else:
                 x = op(x)
         # calc avg_latency
         avg_latency = 0.0
         for k, op in self._modules.items():
-            if hasattr(op, 'avg_latency'):
+            if hasattr(op, "avg_latency"):
                 avg_latency += op.avg_latency
         self._avg_latency = avg_latency
         self.latency_evaluated = True
@@ -295,10 +317,10 @@ class ENAS_Sequential(gluon.HybridBlock):
             self._modules[k].sample(v)
 
     def __repr__(self):
-        reprstr = self.__class__.__name__ + '('
+        reprstr = self.__class__.__name__ + "("
         for i, op in self._modules.items():
-            reprstr += '\n\t{}: {}'.format(i, op)
-        reprstr += ')\n'
+            reprstr += "\n\t{}: {}".format(i, op)
+        reprstr += ")\n"
         return reprstr
 
     def export(self, path):
@@ -326,31 +348,36 @@ class ENAS_Sequential(gluon.HybridBlock):
         from mxnet import npx as _mx_npx
         from mxnet.util import is_np_array
         from mxnet import ndarray
+
         if not self._cached_graph:
             raise RuntimeError(
                 "Please first call block.hybridize() and then run forward with "
-                "this block at least once before calling export.")
+                "this block at least once before calling export."
+            )
         sym = self._cached_graph[1]
-        sym.save('%s-symbol.json'%path, remove_amp_cast=True)
+        sym.save("%s-symbol.json" % path, remove_amp_cast=True)
 
         arg_names = set(sym.list_arguments())
         aux_names = set(sym.list_auxiliary_states())
         arg_dict = {}
         for name, param in self.collect_params().items():
             if name in arg_names:
-                arg_dict['arg:%s'%name] = param._reduce()
+                arg_dict["arg:%s" % name] = param._reduce()
             elif name in aux_names:
-                arg_dict['aux:%s'%name] = param._reduce()
+                arg_dict["aux:%s" % name] = param._reduce()
             else:
                 pass
         save_fn = _mx_npx.save if is_np_array() else ndarray.save
-        save_fn('%s.params'%(path), arg_dict)
+        save_fn("%s.params" % (path), arg_dict)
+
 
 class Zero_Unit(gluon.HybridBlock):
     def hybrid_forward(self, F, x):
         return x
+
     def __repr__(self):
         return self.__class__.__name__
+
 
 class ENAS_Unit(gluon.HybridBlock):
     def __init__(self, *ops, with_zero=False):
@@ -385,25 +412,26 @@ class ENAS_Unit(gluon.HybridBlock):
     @property
     def latency(self):
         if not self.latency_evaluated:
-            raise Exception('Latency is not evaluated yet.')
+            raise Exception("Latency is not evaluated yet.")
         return self._latency[self.index]
 
     @property
     def avg_latency(self):
         if not self.latency_evaluated:
-            raise Exception('Latency is not evaluated yet.')
+            raise Exception("Latency is not evaluated yet.")
         return sum(self._latency) / len(self._latency)
 
     def evaluate_latency(self, x):
         import time
+
         for i, op in enumerate(self.module_list):
             latency_i = 0
             for j in range(self._latency_benchmark_times + self._latency_warmup_times):
-                start_time = time.time() * 1000 # ms
-                #print('op {}, shape x {}'.format(op, x.shape))
+                start_time = time.time() * 1000  # ms
+                # print('op {}, shape x {}'.format(op, x.shape))
                 y = op(x)
                 mx.nd.waitall()
-                end_time = time.time() * 1000 # ms
+                end_time = time.time() * 1000  # ms
                 if j > self._latency_warmup_times:
                     latency_i += end_time - start_time
             self._latency[i] = latency_i / self._latency_benchmark_times
@@ -417,6 +445,10 @@ class ENAS_Unit(gluon.HybridBlock):
         return len(self.module_list)
 
     def __repr__(self):
-        reprstr = self.__class__.__name__ + '(num of choices: {}), current architecture:\n\t {}' \
-            .format(len(self.module_list), self.module_list[self.index])
+        reprstr = (
+            self.__class__.__name__
+            + "(num of choices: {}), current architecture:\n\t {}".format(
+                len(self.module_list), self.module_list[self.index]
+            )
+        )
         return reprstr

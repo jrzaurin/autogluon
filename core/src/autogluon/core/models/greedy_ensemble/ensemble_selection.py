@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 
 class EnsembleSelection:
     def __init__(
-            self,
-            ensemble_size: int,
-            problem_type: str,
-            metric,
-            sorted_initialization: bool = False,
-            bagging: bool = False,
-            tie_breaker: str = 'random',
-            random_state: np.random.RandomState = None,
+        self,
+        ensemble_size: int,
+        problem_type: str,
+        metric,
+        sorted_initialization: bool = False,
+        bagging: bool = False,
+        tie_breaker: str = "random",
+        random_state: np.random.RandomState = None,
     ):
         self.ensemble_size = ensemble_size
         self.problem_type = problem_type
@@ -28,26 +28,35 @@ class EnsembleSelection:
         self.sorted_initialization = sorted_initialization
         self.bagging = bagging
         self.use_best = True
-        if tie_breaker not in ['random', 'second_metric']:
-            raise ValueError(f"Unknown tie_breaker value: {tie_breaker}. Must be one of: ['random', 'second_metric']")
+        if tie_breaker not in ["random", "second_metric"]:
+            raise ValueError(
+                f"Unknown tie_breaker value: {tie_breaker}. Must be one of: ['random', 'second_metric']"
+            )
         self.tie_breaker = tie_breaker
         if random_state is not None:
             self.random_state = random_state
         else:
             self.random_state = np.random.RandomState(seed=0)
 
-    def fit(self, predictions, labels, time_limit=None, identifiers=None, sample_weight=None):
+    def fit(
+        self, predictions, labels, time_limit=None, identifiers=None, sample_weight=None
+    ):
         self.ensemble_size = int(self.ensemble_size)
         if self.ensemble_size < 1:
-            raise ValueError('Ensemble size cannot be less than one!')
+            raise ValueError("Ensemble size cannot be less than one!")
         if not self.problem_type in PROBLEM_TYPES:
-            raise ValueError('Unknown problem type %s.' % self.problem_type)
+            raise ValueError("Unknown problem type %s." % self.problem_type)
         # if not isinstance(self.metric, Scorer):
         #     raise ValueError('Metric must be of type scorer')
 
-        self._fit(predictions=predictions, labels=labels, time_limit=time_limit, sample_weight=sample_weight)
+        self._fit(
+            predictions=predictions,
+            labels=labels,
+            time_limit=time_limit,
+            sample_weight=sample_weight,
+        )
         self._calculate_weights()
-        logger.log(15, 'Ensemble weights: ')
+        logger.log(15, "Ensemble weights: ")
         logger.log(15, self.weights_)
         return self
 
@@ -88,25 +97,43 @@ class EnsembleSelection:
                 weighted_ensemble_prediction = (s / float(s + 1)) * ensemble_prediction
             fant_ensemble_prediction = np.zeros(weighted_ensemble_prediction.shape)
             for j, pred in enumerate(predictions):
-                fant_ensemble_prediction[:] = weighted_ensemble_prediction + (1. / float(s + 1)) * pred
-                scores[j] = self._calculate_regret(y_true=labels, y_pred_proba=fant_ensemble_prediction, metric=self.metric, sample_weight=sample_weight)
+                fant_ensemble_prediction[:] = (
+                    weighted_ensemble_prediction + (1.0 / float(s + 1)) * pred
+                )
+                scores[j] = self._calculate_regret(
+                    y_true=labels,
+                    y_pred_proba=fant_ensemble_prediction,
+                    metric=self.metric,
+                    sample_weight=sample_weight,
+                )
 
             all_best = np.argwhere(scores == np.nanmin(scores)).flatten()
 
             if len(all_best) > 1:
-                if self.tie_breaker == 'second_metric':
-                    if self.problem_type in ['binary', 'multiclass']:
+                if self.tie_breaker == "second_metric":
+                    if self.problem_type in ["binary", "multiclass"]:
                         # Tiebreak with log_loss
                         scores_tiebreak = np.zeros((len(all_best)))
                         secondary_metric = log_loss
-                        fant_ensemble_prediction = np.zeros(weighted_ensemble_prediction.shape)
+                        fant_ensemble_prediction = np.zeros(
+                            weighted_ensemble_prediction.shape
+                        )
                         index_map = {}
                         for k, j in enumerate(all_best):
                             index_map[k] = j
                             pred = predictions[j]
-                            fant_ensemble_prediction[:] = weighted_ensemble_prediction + (1. / float(s + 1)) * pred
-                            scores_tiebreak[k] = self._calculate_regret(y_true=labels, y_pred_proba=fant_ensemble_prediction, metric=secondary_metric)
-                        all_best_tiebreak = np.argwhere(scores_tiebreak == np.nanmin(scores_tiebreak)).flatten()
+                            fant_ensemble_prediction[:] = (
+                                weighted_ensemble_prediction
+                                + (1.0 / float(s + 1)) * pred
+                            )
+                            scores_tiebreak[k] = self._calculate_regret(
+                                y_true=labels,
+                                y_pred_proba=fant_ensemble_prediction,
+                                metric=secondary_metric,
+                            )
+                        all_best_tiebreak = np.argwhere(
+                            scores_tiebreak == np.nanmin(scores_tiebreak)
+                        ).flatten()
                         all_best = [index_map[index] for index in all_best_tiebreak]
 
             best = self.random_state.choice(all_best)
@@ -123,28 +150,33 @@ class EnsembleSelection:
                 time_elapsed = time.time() - time_start
                 time_left = time_limit - time_elapsed
                 if time_left <= 0:
-                    logger.warning('Warning: Ensemble Selection ran out of time, early stopping at iteration %s. This may mean that the time_limit specified is very small for this problem.' % (i+1))
+                    logger.warning(
+                        "Warning: Ensemble Selection ran out of time, early stopping at iteration %s. This may mean that the time_limit specified is very small for this problem."
+                        % (i + 1)
+                    )
                     break
 
         min_score = np.min(trajectory)
         first_index_of_best = trajectory.index(min_score)
 
         if self.use_best:
-            self.indices_ = order[:first_index_of_best+1]
-            self.trajectory_ = trajectory[:first_index_of_best+1]
+            self.indices_ = order[: first_index_of_best + 1]
+            self.trajectory_ = trajectory[: first_index_of_best + 1]
             self.train_score_ = trajectory[first_index_of_best]
             self.ensemble_size = first_index_of_best + 1
-            logger.log(15, 'Ensemble size: %s' % self.ensemble_size)
+            logger.log(15, "Ensemble size: %s" % self.ensemble_size)
         else:
             self.indices_ = order
             self.trajectory_ = trajectory
             self.train_score_ = trajectory[-1]
 
-        logger.debug("Ensemble indices: "+str(self.indices_))
+        logger.debug("Ensemble indices: " + str(self.indices_))
 
     def _calculate_regret(self, y_true, y_pred_proba, metric, sample_weight=None):
         if metric.needs_pred:
-            preds = get_pred_from_proba(y_pred_proba=y_pred_proba, problem_type=self.problem_type)
+            preds = get_pred_from_proba(
+                y_pred_proba=y_pred_proba, problem_type=self.problem_type
+            )
         else:
             preds = y_pred_proba
         score = compute_weighted_metric(y_true, preds, metric, sample_weight)
@@ -164,7 +196,9 @@ class EnsembleSelection:
 
     def predict(self, X):
         y_pred_proba = self.predict_proba(X)
-        return get_pred_from_proba(y_pred_proba=y_pred_proba, problem_type=self.problem_type)
+        return get_pred_from_proba(
+            y_pred_proba=y_pred_proba, problem_type=self.problem_type
+        )
 
     def predict_proba(self, X):
         return self.weight_pred_probas(X, weights=self.weights_)

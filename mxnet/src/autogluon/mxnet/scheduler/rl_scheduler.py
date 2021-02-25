@@ -12,6 +12,7 @@ class BaseController(mx.gluon.Block):
     BaseController subclasses are used in RLSearcher, which is the searcher
     for RLScheduler.
     """
+
     def __init__(self, prefetch=4, num_workers=4, timeout=20, **kwargs):
         super().__init__()
         # manager = multiprocessing.Manager()
@@ -45,9 +46,11 @@ class BaseController(mx.gluon.Block):
             self._rcvd_idx += 1
             return ret.get(timeout=self._timeout)
         except multiprocessing.context.TimeoutError:
-            msg = '''Worker timed out after {} seconds. This might be caused by \n
+            msg = """Worker timed out after {} seconds. This might be caused by \n
             - Slow transform. Please increase timeout to allow slower data loading in each worker.
-            '''.format(self._timeout)
+            """.format(
+                self._timeout
+            )
             print(msg)
             raise
         except Exception:
@@ -57,8 +60,9 @@ class BaseController(mx.gluon.Block):
 
 # Reference: https://github.com/carpedm20/ENAS-pytorch/
 class LSTMController(BaseController):
-    def __init__(self, kwspaces, softmax_temperature=1.0, hidden_size=100,
-                 ctx=mx.cpu(), **kwargs):
+    def __init__(
+        self, kwspaces, softmax_temperature=1.0, hidden_size=100, ctx=mx.cpu(), **kwargs
+    ):
         super().__init__(**kwargs)
         self.softmax_temperature = softmax_temperature
         self.spaces = list(kwspaces.items())
@@ -74,7 +78,9 @@ class LSTMController(BaseController):
 
         # controller lstm
         self.encoder = nn.Embedding(num_total_tokens, hidden_size)
-        self.lstm = mx.gluon.rnn.LSTMCell(input_size=hidden_size, hidden_size=hidden_size)
+        self.lstm = mx.gluon.rnn.LSTMCell(
+            input_size=hidden_size, hidden_size=hidden_size
+        )
         self.decoders = nn.Sequential()
         for idx, size in enumerate(self.num_tokens):
             decoder = nn.Dense(in_units=hidden_size, units=size)
@@ -107,8 +113,9 @@ class LSTMController(BaseController):
         hidden = self.static_init_hidden[1]
         actions = []
         for block_idx in range(len(self.num_tokens)):
-            logits, hidden = self.forward(inputs, hidden,
-                                          block_idx, is_embed=(block_idx == 0))
+            logits, hidden = self.forward(
+                inputs, hidden, block_idx, is_embed=(block_idx == 0)
+            )
             probs = mx.nd.softmax(logits, axis=-1)
             action = mx.nd.argmax(probs, 1)
             actions.append(action)
@@ -138,16 +145,19 @@ class LSTMController(BaseController):
         log_probs = []
 
         for idx in range(len(self.num_tokens)):
-            logits, hidden = self.forward(inputs, hidden,
-                                          idx, is_embed=(idx == 0))
+            logits, hidden = self.forward(inputs, hidden, idx, is_embed=(idx == 0))
 
             probs = mx.nd.softmax(logits, axis=-1)
             log_prob = mx.nd.log_softmax(logits, axis=-1)
-            entropy = -(log_prob * probs).sum(1, keepdims=False) if with_entropy else None
+            entropy = (
+                -(log_prob * probs).sum(1, keepdims=False) if with_entropy else None
+            )
 
             action = mx.random.multinomial(probs, 1)
-            ind = mx.nd.stack(mx.nd.arange(probs.shape[0], ctx=action.context),
-                              action.astype('float32'))
+            ind = mx.nd.stack(
+                mx.nd.arange(probs.shape[0], ctx=action.context),
+                action.astype("float32"),
+            )
             selected_log_prob = mx.nd.gather_nd(log_prob, ind)
 
             actions.append(action[:, 0])
@@ -176,15 +186,16 @@ class LSTMController(BaseController):
 class Alpha(mx.gluon.Block):
     def __init__(self, shape):
         super().__init__()
-        self.weight = self.params.get('weight', shape=shape)
+        self.weight = self.params.get("weight", shape=shape)
 
     def forward(self, batch_size):
         return self.weight.data().expand_dims(0).repeat(batch_size, axis=0)
 
 
 class AttenController(BaseController):
-    def __init__(self, kwspaces, softmax_temperature=1.0, hidden_size=100,
-                 ctx=mx.cpu(), **kwargs):
+    def __init__(
+        self, kwspaces, softmax_temperature=1.0, hidden_size=100, ctx=mx.cpu(), **kwargs
+    ):
         super().__init__(**kwargs)
         self.softmax_temperature = softmax_temperature
         self.spaces = list(kwspaces.items())
@@ -217,8 +228,8 @@ class AttenController(BaseController):
         actions = []
         for idx in range(len(self.num_tokens)):
             i0 = sum(self.num_tokens[:idx])
-            i1 = sum(self.num_tokens[:idx + 1])
-            logits = alphas[:, i0: i1]
+            i1 = sum(self.num_tokens[: idx + 1])
+            logits = alphas[:, i0:i1]
             probs = mx.nd.softmax(logits, axis=-1)
             action = mx.nd.argmax(probs, 1)
             actions.append(action)
@@ -247,17 +258,21 @@ class AttenController(BaseController):
         log_probs = []
         for idx in range(len(self.num_tokens)):
             i0 = sum(self.num_tokens[:idx])
-            i1 = sum(self.num_tokens[:idx + 1])
-            logits = alphas[:, i0: i1]
+            i1 = sum(self.num_tokens[: idx + 1])
+            logits = alphas[:, i0:i1]
 
             probs = mx.nd.softmax(logits, axis=-1)
             log_prob = mx.nd.log_softmax(logits, axis=-1)
 
-            entropy = -(log_prob * probs).sum(1, keepdims=False) if with_entropy else None
+            entropy = (
+                -(log_prob * probs).sum(1, keepdims=False) if with_entropy else None
+            )
 
             action = mx.random.multinomial(probs, 1)
-            ind = mx.nd.stack(mx.nd.arange(probs.shape[0], ctx=action.context),
-                              action.astype('float32'))
+            ind = mx.nd.stack(
+                mx.nd.arange(probs.shape[0], ctx=action.context),
+                action.astype("float32"),
+            )
             selected_log_prob = mx.nd.gather_nd(log_prob, ind)
 
             actions.append(action[:, 0])
@@ -326,11 +341,15 @@ class AlphaController(BaseController):
             probs = mx.nd.softmax(logits, axis=-1)
             log_prob = mx.nd.log_softmax(logits, axis=-1)
 
-            entropy = -(log_prob * probs).sum(1, keepdims=False) if with_entropy else None
+            entropy = (
+                -(log_prob * probs).sum(1, keepdims=False) if with_entropy else None
+            )
 
             action = mx.random.multinomial(probs, 1)
-            ind = mx.nd.stack(mx.nd.arange(probs.shape[0], ctx=action.context),
-                              action.astype('float32'))
+            ind = mx.nd.stack(
+                mx.nd.arange(probs.shape[0], ctx=action.context),
+                action.astype("float32"),
+            )
             selected_log_prob = mx.nd.gather_nd(log_prob, ind)
 
             actions.append(action[:, 0])

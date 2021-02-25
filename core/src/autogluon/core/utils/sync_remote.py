@@ -7,18 +7,20 @@ import signal
 import subprocess
 from contextlib import contextmanager
 
-__all__ = ['sagemaker_setup']
+__all__ = ["sagemaker_setup"]
+
 
 def sagemaker_setup():
     # Read info that SageMaker provides
-    current_host = os.environ['SM_CURRENT_HOST']
-    hosts = json.loads(os.environ['SM_HOSTS'])
+    current_host = os.environ["SM_CURRENT_HOST"]
+    hosts = json.loads(os.environ["SM_HOSTS"])
     # Enable SSH connections between containers
     subprocess.Popen(["/usr/sbin/sshd", "-D"])
     if current_host == sorted(hosts)[0]:
         _wait_for_worker_nodes_to_start_sshd(hosts)
     else:
-        sync_training_processes('dask-scheduler', current_host)
+        sync_training_processes("dask-scheduler", current_host)
+
 
 def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1, timeout_in_seconds=180):
     with timeout(seconds=timeout_in_seconds):
@@ -29,6 +31,7 @@ def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1, timeout_in_seconds=1
                 if _can_connect(host, 22, ssh_socket):
                     hosts.remove(host)
             time.sleep(interval)
+
 
 def _can_connect(host, port, s):
     try:
@@ -41,31 +44,42 @@ def _can_connect(host, port, s):
         print("can't connect to host %s", host)
         return False
 
+
 class TimeoutError(Exception):
     pass
+
 
 def sync_training_processes(proccess_id_string, worker_id, sync_frequency=300):
     training_process_started = False
     while True:
         time.sleep(sync_frequency)
-        training_process_ps = subprocess.check_output(f'ps -elf | grep "{proccess_id_string}"', encoding='utf-8', shell=True)
+        training_process_ps = subprocess.check_output(
+            f'ps -elf | grep "{proccess_id_string}"', encoding="utf-8", shell=True
+        )
         print(training_process_ps)
-        training_process_count = subprocess.check_output(f'ps -elf | grep "{proccess_id_string}" | wc -l', encoding='utf-8', shell=True)
+        training_process_count = subprocess.check_output(
+            f'ps -elf | grep "{proccess_id_string}" | wc -l',
+            encoding="utf-8",
+            shell=True,
+        )
         training_process_count_str = training_process_count.replace("\n", "").strip()
         training_process_count = int(training_process_count_str) - 2
         training_process_running = training_process_count > 0
         if training_process_started:
-            print(f'training processes running: {training_process_count}')
+            print(f"training processes running: {training_process_count}")
             if not training_process_running:
-                print(f'Worker {worker_id} training completed.')
+                print(f"Worker {worker_id} training completed.")
                 time.sleep(5)
                 return
         if not training_process_started:
             if training_process_running:
                 training_process_started = True
             else:
-                print(f'Worker {worker_id} exiting: training not started in 300 seconds.')
+                print(
+                    f"Worker {worker_id} exiting: training not started in 300 seconds."
+                )
                 return
+
 
 @contextmanager
 def timeout(seconds=0, minutes=0, hours=0):
@@ -84,7 +98,7 @@ def timeout(seconds=0, minutes=0, hours=0):
     limit = seconds + 60 * minutes + 3600 * hours
 
     def handler(signum, frame):
-        raise TimeoutError('timed out after {} seconds'.format(limit))
+        raise TimeoutError("timed out after {} seconds".format(limit))
 
     try:
         signal.signal(signal.SIGALRM, handler)

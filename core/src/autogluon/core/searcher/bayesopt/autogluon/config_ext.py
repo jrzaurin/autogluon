@@ -5,7 +5,7 @@ import copy
 
 from .hp_ranges import HyperparameterRanges_CS
 
-RESOURCE_ATTR_PREFIX = 'RESOURCE_ATTR_'
+RESOURCE_ATTR_PREFIX = "RESOURCE_ATTR_"
 
 
 class ExtendedConfiguration(object):
@@ -23,9 +23,13 @@ class ExtendedConfiguration(object):
     epoch < resource_attr_range[0]).
 
     """
+
     def __init__(
-            self, hp_ranges: HyperparameterRanges_CS, resource_attr_key: str,
-            resource_attr_range: Tuple[int, int]):
+        self,
+        hp_ranges: HyperparameterRanges_CS,
+        resource_attr_key: str,
+        resource_attr_range: Tuple[int, int],
+    ):
         assert resource_attr_range[0] >= 1
         assert resource_attr_range[1] >= resource_attr_range[0]
         self.hp_ranges = hp_ranges
@@ -35,11 +39,14 @@ class ExtendedConfiguration(object):
         config_space_ext = copy.deepcopy(hp_ranges.config_space)
         self.resource_attr_name = RESOURCE_ATTR_PREFIX + resource_attr_key
         # Allowed range: [1, resource_attr_range[1]]
-        config_space_ext.add_hyperparameter(CSH.UniformIntegerHyperparameter(
-            name=self.resource_attr_name, lower=1,
-            upper=resource_attr_range[1]))
+        config_space_ext.add_hyperparameter(
+            CSH.UniformIntegerHyperparameter(
+                name=self.resource_attr_name, lower=1, upper=resource_attr_range[1]
+            )
+        )
         self.hp_ranges_ext = HyperparameterRanges_CS(
-            config_space_ext, name_last_pos=self.resource_attr_name)
+            config_space_ext, name_last_pos=self.resource_attr_name
+        )
 
     def get(self, config: CS.Configuration, resource: int) -> CS.Configuration:
         """
@@ -54,8 +61,8 @@ class ExtendedConfiguration(object):
         return CS.Configuration(self.hp_ranges_ext.config_space, values=values)
 
     def remap_resource(
-            self, config_ext: CS.Configuration, resource: int,
-            as_dict: bool=False) -> Union[CS.Configuration, dict]:
+        self, config_ext: CS.Configuration, resource: int, as_dict: bool = False
+    ) -> Union[CS.Configuration, dict]:
         """
         Re-assigns resource value for extended config.
 
@@ -69,12 +76,11 @@ class ExtendedConfiguration(object):
         if as_dict:
             return x_dct
         else:
-            return CS.Configuration(
-                self.hp_ranges_ext.config_space, values=x_dct)
+            return CS.Configuration(self.hp_ranges_ext.config_space, values=x_dct)
 
     def remove_resource(
-            self, config_ext: CS.Configuration,
-            as_dict: bool=False) -> Union[CS.Configuration, dict]:
+        self, config_ext: CS.Configuration, as_dict: bool = False
+    ) -> Union[CS.Configuration, dict]:
         """
         Strips away resource attribute and returns normal config
 
@@ -99,12 +105,16 @@ class ExtendedConfiguration(object):
         """
         # Note: Here, the key for resource is resource_attr_key, not
         # resource_attr_name
-        hp_ranges = self.hp_ranges_ext if self.resource_attr_key in config_dct \
+        hp_ranges = (
+            self.hp_ranges_ext
+            if self.resource_attr_key in config_dct
             else self.hp_ranges
+        )
         return CS.Configuration(hp_ranges.config_space, values=config_dct)
 
-    def split(self, config_ext: CS.Configuration, as_dict: bool=False) -> \
-            (Union[CS.Configuration, dict], int):
+    def split(
+        self, config_ext: CS.Configuration, as_dict: bool = False
+    ) -> (Union[CS.Configuration, dict], int):
         """
         Split extended config into normal config and resource value.
 

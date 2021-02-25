@@ -14,19 +14,28 @@ import autogluon.core as ag
 
 # CLI
 def parse_args():
-    parser = argparse.ArgumentParser(description='Train a model for image classification.')
-    parser.add_argument('--num-gpus', type=int, default=1,
-                        help='number of gpus to use.')
-    parser.add_argument('--num-trials', default=10, type=int,
-                        help='number of trail tasks')
-    parser.add_argument('--epochs', default=20, type=int,
-                        help='number of epochs')
-    parser.add_argument('--scheduler', type=str, default='fifo',
-                        help='scheduler name (default: fifo)')
-    parser.add_argument('--checkpoint', type=str, default='checkpoint/cifar1.ag',
-                        help='checkpoint path (default: None)')
-    parser.add_argument('--debug', action='store_true', default= False,
-                        help='debug if needed')
+    parser = argparse.ArgumentParser(
+        description="Train a model for image classification."
+    )
+    parser.add_argument(
+        "--num-gpus", type=int, default=1, help="number of gpus to use."
+    )
+    parser.add_argument(
+        "--num-trials", default=10, type=int, help="number of trail tasks"
+    )
+    parser.add_argument("--epochs", default=20, type=int, help="number of epochs")
+    parser.add_argument(
+        "--scheduler", type=str, default="fifo", help="scheduler name (default: fifo)"
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default="checkpoint/cifar1.ag",
+        help="checkpoint path (default: None)",
+    )
+    parser.add_argument(
+        "--debug", action="store_true", default=False, help="debug if needed"
+    )
     args = parser.parse_args()
     return args
 
@@ -35,7 +44,7 @@ def parse_args():
     batch_size=64,
     num_workers=2,
     num_gpus=1,
-    model='cifar_resnet20_v1',
+    model="cifar_resnet20_v1",
     j=4,
     lr=ag.space.Real(1e-2, 1e-1, log=True),
     momentum=0.9,
@@ -43,7 +52,7 @@ def parse_args():
     epochs=20,
 )
 def train_cifar(args, reporter):
-    print('args', args)
+    print("args", args)
     batch_size = args.batch_size
 
     num_gpus = args.num_gpus
@@ -54,17 +63,21 @@ def train_cifar(args, reporter):
     model_name = args.model
     net = get_model(model_name, classes=10)
 
-    transform_train = transforms.Compose([
-        gcv_transforms.RandomCrop(32, pad=4),
-        transforms.RandomFlipLeftRight(),
-        transforms.ToTensor(),
-        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
-    ])
+    transform_train = transforms.Compose(
+        [
+            gcv_transforms.RandomCrop(32, pad=4),
+            transforms.RandomFlipLeftRight(),
+            transforms.ToTensor(),
+            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]),
+        ]
+    )
 
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
-    ])
+    transform_test = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]),
+        ]
+    )
 
     def test(ctx, val_data):
         metric = mx.metric.Accuracy()
@@ -82,17 +95,30 @@ def train_cifar(args, reporter):
 
         train_data = gluon.data.DataLoader(
             gluon.data.vision.CIFAR10(train=True).transform_first(transform_train),
-            batch_size=batch_size, shuffle=True, last_batch='discard', num_workers=num_workers)
+            batch_size=batch_size,
+            shuffle=True,
+            last_batch="discard",
+            num_workers=num_workers,
+        )
 
         val_data = gluon.data.DataLoader(
             gluon.data.vision.CIFAR10(train=False).transform_first(transform_test),
-            batch_size=batch_size, shuffle=False, num_workers=num_workers)
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+        )
 
-        lr_scheduler = LRScheduler(mode='cosine', base_lr=args.lr,
-                                   nepochs=args.epochs,
-                                   iters_per_epoch=len(train_data))
-        trainer = gluon.Trainer(net.collect_params(), 'sgd',
-                                {'lr_scheduler': lr_scheduler, 'wd': args.wd, 'momentum': args.momentum})
+        lr_scheduler = LRScheduler(
+            mode="cosine",
+            base_lr=args.lr,
+            nepochs=args.epochs,
+            iters_per_epoch=len(train_data),
+        )
+        trainer = gluon.Trainer(
+            net.collect_params(),
+            "sgd",
+            {"lr_scheduler": lr_scheduler, "wd": args.wd, "momentum": args.momentum},
+        )
         metric = mx.metric.Accuracy()
         train_metric = mx.metric.Accuracy()
         loss_fn = gluon.loss.SoftmaxCrossEntropyLoss()
@@ -129,9 +155,10 @@ def train_cifar(args, reporter):
             train_loss /= batch_size * num_batch
             name, acc = train_metric.get()
             name, val_acc = test(ctx, val_data)
-            reporter(epoch=epoch+1, accuracy=val_acc)
+            reporter(epoch=epoch + 1, accuracy=val_acc)
 
     train(args.epochs, context)
+
 
 def cifar_evaluate(net, args):
     batch_size = args.batch_size
@@ -140,13 +167,18 @@ def cifar_evaluate(net, args):
     ctx = [mx.gpu(i) for i in range(args.num_gpus)] if args.num_gpus > 0 else [mx.cpu()]
     net.collect_params().reset_ctx(ctx)
     metric = mx.metric.Accuracy()
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
-    ])
+    transform_test = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]),
+        ]
+    )
     val_data = gluon.data.DataLoader(
         gluon.data.vision.CIFAR10(train=False).transform_first(transform_test),
-        batch_size=batch_size, shuffle=False, num_workers=args.num_workers)
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+    )
 
     for i, batch in enumerate(val_data):
         data = gluon.utils.split_and_load(batch[0], ctx_list=ctx, batch_axis=0)
@@ -155,7 +187,8 @@ def cifar_evaluate(net, args):
         metric.update(label, outputs)
     return metric.get()[1]
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     args = parse_args()
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -165,27 +198,38 @@ if __name__ == '__main__':
     train_cifar.update(epochs=args.epochs)
     # create searcher and scheduler
     extra_node_ips = []
-    if args.scheduler == 'hyperband':
-        myscheduler = ag.scheduler.HyperbandScheduler(train_cifar,
-                                                      resource={'num_cpus': 2, 'num_gpus': args.num_gpus},
-                                                      num_trials=args.num_trials,
-                                                      checkpoint=args.checkpoint,
-                                                      time_attr='epoch', reward_attr="accuracy",
-                                                      max_t=args.epochs, grace_period=args.epochs//4,
-                                                      dist_ip_addrs=extra_node_ips)
-    elif args.scheduler == 'fifo':
-        myscheduler = ag.scheduler.FIFOScheduler(train_cifar,
-                                                 resource={'num_cpus': 2, 'num_gpus': args.num_gpus},
-                                                 num_trials=args.num_trials,
-                                                 checkpoint=args.checkpoint,
-                                                 reward_attr="accuracy",
-                                                 dist_ip_addrs=extra_node_ips)
+    if args.scheduler == "hyperband":
+        myscheduler = ag.scheduler.HyperbandScheduler(
+            train_cifar,
+            resource={"num_cpus": 2, "num_gpus": args.num_gpus},
+            num_trials=args.num_trials,
+            checkpoint=args.checkpoint,
+            time_attr="epoch",
+            reward_attr="accuracy",
+            max_t=args.epochs,
+            grace_period=args.epochs // 4,
+            dist_ip_addrs=extra_node_ips,
+        )
+    elif args.scheduler == "fifo":
+        myscheduler = ag.scheduler.FIFOScheduler(
+            train_cifar,
+            resource={"num_cpus": 2, "num_gpus": args.num_gpus},
+            num_trials=args.num_trials,
+            checkpoint=args.checkpoint,
+            reward_attr="accuracy",
+            dist_ip_addrs=extra_node_ips,
+        )
     else:
-        raise RuntimeError('Unsuported Scheduler!')
+        raise RuntimeError("Unsuported Scheduler!")
 
     print(myscheduler)
     myscheduler.run()
     myscheduler.join_jobs()
-    myscheduler.get_training_curves('{}.png'.format(os.path.splitext(args.checkpoint)[0]))
-    print('The Best Configuration and Accuracy are: {}, {}'.format(myscheduler.get_best_config(),
-                                                                   myscheduler.get_best_reward()))
+    myscheduler.get_training_curves(
+        "{}.png".format(os.path.splitext(args.checkpoint)[0])
+    )
+    print(
+        "The Best Configuration and Accuracy are: {}, {}".format(
+            myscheduler.get_best_config(), myscheduler.get_best_reward()
+        )
+    )

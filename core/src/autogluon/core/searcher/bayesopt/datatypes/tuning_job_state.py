@@ -9,6 +9,7 @@ class TuningJobState(NamedTuple):
     Tuning job state (non disjoint: so for a single algorithm when tuning
     multiple algorithms)
     """
+
     hp_ranges: HyperparameterRanges
     candidate_evaluations: List[CandidateEvaluation]
     failed_candidates: List[Candidate]

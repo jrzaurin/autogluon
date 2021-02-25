@@ -18,6 +18,7 @@ from toolz import merge
 
 logger = logging.getLogger(__name__)
 
+
 class bcolors:
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"
@@ -27,6 +28,7 @@ class bcolors:
     ENDC = "\033[0m"
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
+
 
 def async_ssh(cmd_dict):
     import paramiko
@@ -206,10 +208,11 @@ def async_ssh(cmd_dict):
     ssh.close()
 
 
-def start_scheduler(addr, port, ssh_username, ssh_port,
-                    ssh_private_key, remote_python=None):
+def start_scheduler(
+    addr, port, ssh_username, ssh_port, ssh_private_key, remote_python=None
+):
     cmd = "dask-scheduler --port {port}".format(
-        #python=remote_python or sys.executable,
+        # python=remote_python or sys.executable,
         port=port
     )
 
@@ -244,21 +247,24 @@ def start_scheduler(addr, port, ssh_username, ssh_port,
 
     return merge(cmd_dict, {"thread": thread})
 
-def start_worker(scheduler_addr, scheduler_port, worker_addr,
-    ssh_username, ssh_port, ssh_private_key,
-    remote_python=None):
 
-    cmd = (
-        "dask-worker "
-        "{scheduler_addr}:{scheduler_port} "
-        "--no-nanny "
-    )
+def start_worker(
+    scheduler_addr,
+    scheduler_port,
+    worker_addr,
+    ssh_username,
+    ssh_port,
+    ssh_private_key,
+    remote_python=None,
+):
 
-    #if not nohost:
+    cmd = "dask-worker " "{scheduler_addr}:{scheduler_port} " "--no-nanny "
+
+    # if not nohost:
     cmd += " --host {worker_addr}"
 
     cmd = cmd.format(
-        #python=remote_python or sys.executable,
+        # python=remote_python or sys.executable,
         scheduler_addr=scheduler_addr,
         scheduler_port=scheduler_port,
         worker_addr=worker_addr,

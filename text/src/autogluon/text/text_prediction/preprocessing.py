@@ -5,7 +5,10 @@ from collections import OrderedDict
 from typing import Dict, Optional, List, Tuple, Union
 import numpy as np
 from autogluon_contrib_nlp.data import batchify as bf
-from autogluon_contrib_nlp.utils.preprocessing import get_trimmed_lengths, match_tokens_with_char_spans
+from autogluon_contrib_nlp.utils.preprocessing import (
+    get_trimmed_lengths,
+    match_tokens_with_char_spans,
+)
 from autogluon_contrib_nlp.utils.misc import num_mp_workers
 from .dataset import TabularDataset
 from .fields import TextTokenIdsField, EntityField, CategoricalField, NumericalField
@@ -44,9 +47,7 @@ def _chunk_processor(chunk, processing_fn):
     return out
 
 
-def parallel_transform(df, processing_fn,
-                       num_process=None,
-                       fallback_threshold=1000):
+def parallel_transform(df, processing_fn, num_process=None, fallback_threshold=1000):
     """Apply the function to each row of the pandas dataframe and store the results
     in a python list.
 
@@ -77,22 +78,24 @@ def parallel_transform(df, processing_fn,
     else:
         chunks = np.array_split(df, num_process * 8)
         with mp.Pool(num_process) as pool:
-            out_l = pool.map(functools.partial(_chunk_processor, processing_fn=processing_fn),
-                             chunks)
+            out_l = pool.map(
+                functools.partial(_chunk_processor, processing_fn=processing_fn), chunks
+            )
         out = sum(out_l, [])
     return out
 
 
 def process_text_entity_features(
-        data,
-        tokenizer,
-        text_columns: Optional[List[str]],
-        entity_columns: Optional[List[str]],
-        max_length: int,
-        entity_props,
-        merge_text: bool = False,
-        store_token_offsets: bool = True,
-        truncate_out_of_range: bool = True):
+    data,
+    tokenizer,
+    text_columns: Optional[List[str]],
+    entity_columns: Optional[List[str]],
+    max_length: int,
+    entity_props,
+    merge_text: bool = False,
+    store_token_offsets: bool = True,
+    truncate_out_of_range: bool = True,
+):
     """Process the text and entity features
 
     Parameters
@@ -142,14 +145,16 @@ def process_text_entity_features(
         # Token IDs =      [CLS]    token_ids1       [SEP]      token_ids2         [SEP]
         # Segment IDs =      0         0               0           1                 1
         # Token Offsets = (-1, -1), token_offsets1   (-1, -1)    token_offsets2   (-1, -1)
-        trimmed_lengths = get_trimmed_lengths(lengths,
-                                              max_length=max_length - len(lengths) - 1,
-                                              do_merge=True)
+        trimmed_lengths = get_trimmed_lengths(
+            lengths, max_length=max_length - len(lengths) - 1, do_merge=True
+        )
         encoded_token_ids = [np.array([tokenizer.vocab.cls_id])]
         encoded_token_offsets = [np.array([[-1, -1]])]
         segment_ids = [np.array([0])]
         shift = 1
-        for idx, (trim_length, col_name) in enumerate(zip(trimmed_lengths, text_columns)):
+        for idx, (trim_length, col_name) in enumerate(
+            zip(trimmed_lengths, text_columns)
+        ):
             slice_length = min(len(text_token_ids[col_name]), trim_length)
             sentence_start_in_merged[col_name] = shift
             sentence_slice_stat[col_name] = (0, slice_length)
@@ -159,44 +164,66 @@ def process_text_entity_features(
             encoded_token_ids.append(np.array([tokenizer.vocab.sep_id]))
             segment_ids.append(np.array([idx % 2]))
             if slice_length > 0:
-                encoded_token_offsets.append(text_token_offsets[col_name][:slice_length])
+                encoded_token_offsets.append(
+                    text_token_offsets[col_name][:slice_length]
+                )
             encoded_token_offsets.append(np.array([[-1, -1]]))
             shift += slice_length + 1
         encoded_token_ids = np.concatenate(encoded_token_ids).astype(np.int32)
         segment_ids = np.concatenate(segment_ids).astype(np.int32)
         if store_token_offsets:
-            encoded_token_offsets = np.concatenate(encoded_token_offsets).astype(np.int32)
-            text_features.append(TextTokenIdsField(encoded_token_ids, segment_ids,
-                                                   encoded_token_offsets))
+            encoded_token_offsets = np.concatenate(encoded_token_offsets).astype(
+                np.int32
+            )
+            text_features.append(
+                TextTokenIdsField(encoded_token_ids, segment_ids, encoded_token_offsets)
+            )
         else:
-            text_features.append(TextTokenIdsField(encoded_token_ids, segment_ids,
-                                                   None))
+            text_features.append(
+                TextTokenIdsField(encoded_token_ids, segment_ids, None)
+            )
     else:
         # We encode each sentence independently
         # [CLS] token_ids1 [SEP], [CLS] token_ids2 [SEP]
         #  0     0           0  ,  0     0           0
-        trimmed_lengths = get_trimmed_lengths(lengths,
-                                              max_length=max_length - 2,
-                                              do_merge=False)
+        trimmed_lengths = get_trimmed_lengths(
+            lengths, max_length=max_length - 2, do_merge=False
+        )
         for trim_length, col_name in zip(trimmed_lengths, text_columns):
             slice_length = min(len(text_token_ids[col_name]), trim_length)
             sentence_slice_stat[col_name] = (0, slice_length)
-            encoded_token_ids = np.concatenate([np.array([tokenizer.vocab.cls_id]),
-                                                text_token_ids[col_name][:trim_length],
-                                                np.array([tokenizer.vocab.sep_id])], axis=0)
-            encoded_token_offsets = np.concatenate([np.array([[-1, -1]]),
-                                                    text_token_offsets[col_name][:trim_length],
-                                                    np.array([[-1, -1]])], axis=0)
+            encoded_token_ids = np.concatenate(
+                [
+                    np.array([tokenizer.vocab.cls_id]),
+                    text_token_ids[col_name][:trim_length],
+                    np.array([tokenizer.vocab.sep_id]),
+                ],
+                axis=0,
+            )
+            encoded_token_offsets = np.concatenate(
+                [
+                    np.array([[-1, -1]]),
+                    text_token_offsets[col_name][:trim_length],
+                    np.array([[-1, -1]]),
+                ],
+                axis=0,
+            )
             if store_token_offsets:
-                text_features.append(TextTokenIdsField(encoded_token_ids.astype(np.int32),
-                                                       np.zeros_like(encoded_token_ids,
-                                                                     dtype=np.int32),
-                                                       encoded_token_offsets))
+                text_features.append(
+                    TextTokenIdsField(
+                        encoded_token_ids.astype(np.int32),
+                        np.zeros_like(encoded_token_ids, dtype=np.int32),
+                        encoded_token_offsets,
+                    )
+                )
             else:
-                text_features.append(TextTokenIdsField(encoded_token_ids.astype(np.int32),
-                                                       np.zeros_like(encoded_token_ids,
-                                                                     dtype=np.int32),
-                                                       None))
+                text_features.append(
+                    TextTokenIdsField(
+                        encoded_token_ids.astype(np.int32),
+                        np.zeros_like(encoded_token_ids, dtype=np.int32),
+                        None,
+                    )
+                )
     # Step 2: Transform all entity columns
     for col_name in entity_columns:
         entities = data[col_name]
@@ -205,35 +232,43 @@ def process_text_entity_features(
         char_offsets, transformed_labels = col_prop.transform(entities)
         # Get the stored offsets
         token_offsets = text_token_offsets[parent_name]
-        entity_token_offsets = match_tokens_with_char_spans(token_offsets=token_offsets,
-                                                            spans=char_offsets)
+        entity_token_offsets = match_tokens_with_char_spans(
+            token_offsets=token_offsets, spans=char_offsets
+        )
         slice_start, slice_end = sentence_slice_stat[parent_name]
         if truncate_out_of_range:
             # Ignore out-of-the-range entities
-            in_bound = (entity_token_offsets[:, 0] >= slice_start) *\
-                       (entity_token_offsets[:, 0] < slice_end) *\
-                       (entity_token_offsets[:, 1] >= slice_start) *\
-                       (entity_token_offsets[:, 1] < slice_end)
+            in_bound = (
+                (entity_token_offsets[:, 0] >= slice_start)
+                * (entity_token_offsets[:, 0] < slice_end)
+                * (entity_token_offsets[:, 1] >= slice_start)
+                * (entity_token_offsets[:, 1] < slice_end)
+            )
             entity_token_offsets = entity_token_offsets[in_bound]
             if transformed_labels is not None:
                 transformed_labels = transformed_labels[in_bound]
         if merge_text:
             entity_token_offsets += slice_start + sentence_start_in_merged[parent_name]
         else:
-            entity_token_offsets += slice_start + 1  # Add the offset w.r.t the cls token.
+            entity_token_offsets += (
+                slice_start + 1
+            )  # Add the offset w.r.t the cls token.
         entity_features.append(EntityField(entity_token_offsets, transformed_labels))
     return text_features, entity_features
 
 
 class TabularBasicBERTPreprocessor:
-    def __init__(self, *,
-                 tokenizer,
-                 column_properties,
-                 max_length: int,
-                 label_columns,
-                 feature_columns: Optional[Union[str, List[str]]] = None,
-                 store_token_offsets: bool = True,
-                 merge_text: bool = True):
+    def __init__(
+        self,
+        *,
+        tokenizer,
+        column_properties,
+        max_length: int,
+        label_columns,
+        feature_columns: Optional[Union[str, List[str]]] = None,
+        store_token_offsets: bool = True,
+        merge_text: bool = True
+    ):
         """Preprocess the inputs to work with a pretrained model.
 
         Parameters
@@ -261,15 +296,19 @@ class TabularBasicBERTPreprocessor:
             self._label_columns = [label_columns]
         else:
             self._label_columns = label_columns
-        assert len(self._label_columns) > 0, 'Must specify the label_columns!'
+        assert len(self._label_columns) > 0, "Must specify the label_columns!"
         for col_name in self._label_columns:
-            assert col_name in column_properties, 'label_column="{}" is not found ' \
-                                                  'in column property'.format(col_name)
+            assert (
+                col_name in column_properties
+            ), 'label_column="{}" is not found ' "in column property".format(col_name)
         if feature_columns is not None:
             self._feature_columns = feature_columns
         else:
-            self._feature_columns = [key
-                                     for key in self._column_properties.keys() if key not in self._label_columns]
+            self._feature_columns = [
+                key
+                for key in self._column_properties.keys()
+                if key not in self._label_columns
+            ]
         self._max_length = max_length
         self._merge_text = merge_text
         self._store_token_offsets = store_token_offsets
@@ -290,9 +329,13 @@ class TabularBasicBERTPreprocessor:
                 self._numerical_columns.append(col_name)
             else:
                 raise NotImplementedError
-        self._text_column_require_offsets = {col_name: False for col_name in self.text_columns}
+        self._text_column_require_offsets = {
+            col_name: False for col_name in self.text_columns
+        }
         for col_name in self._entity_columns:
-            self._text_column_require_offsets[self.column_properties[col_name].parent] = True
+            self._text_column_require_offsets[
+                self.column_properties[col_name].parent
+            ] = True
 
     @property
     def feature_columns(self):
@@ -360,21 +403,29 @@ class TabularBasicBERTPreprocessor:
                     parent_idx = 0
                 else:
                     parent_idx = text_col_idx[parent]
-                info_l.append((_C.ENTITY,
-                               {'parent_idx': parent_idx,
-                                'prop': self.column_properties[col_name]}))
+                info_l.append(
+                    (
+                        _C.ENTITY,
+                        {
+                            "parent_idx": parent_idx,
+                            "prop": self.column_properties[col_name],
+                        },
+                    )
+                )
         if len(self.categorical_columns) > 0:
             for col_name in self.categorical_columns:
                 if col_name in self.label_columns:
                     continue
-                info_l.append((_C.CATEGORICAL,
-                               {'prop': self.column_properties[col_name]}))
+                info_l.append(
+                    (_C.CATEGORICAL, {"prop": self.column_properties[col_name]})
+                )
         if len(self.numerical_columns) > 0:
             for col_name in self.numerical_columns:
                 if col_name in self.label_columns:
                     continue
-                info_l.append((_C.NUMERICAL,
-                               {'prop': self.column_properties[col_name]}))
+                info_l.append(
+                    (_C.NUMERICAL, {"prop": self.column_properties[col_name]})
+                )
         return info_l
 
     def label_field_info(self):
@@ -389,9 +440,13 @@ class TabularBasicBERTPreprocessor:
         for col_name in self.label_columns:
             col_prop = self.column_properties[col_name]
             if col_prop.type == _C.CATEGORICAL:
-                info_l.append((_C.CATEGORICAL, {'prop': self.column_properties[col_name]}))
+                info_l.append(
+                    (_C.CATEGORICAL, {"prop": self.column_properties[col_name]})
+                )
             elif col_prop.type == _C.NUMERICAL:
-                info_l.append((_C.NUMERICAL, {'prop': self.column_properties[col_name]}))
+                info_l.append(
+                    (_C.NUMERICAL, {"prop": self.column_properties[col_name]})
+                )
             else:
                 raise NotImplementedError
         return info_l
@@ -434,18 +489,23 @@ class TabularBasicBERTPreprocessor:
                     label_batchify_fn_l.append(NumericalField.batchify())
                 else:
                     raise NotImplementedError
-            return bf.Tuple(bf.Tuple(feature_batchify_fn_l),
-                            bf.Tuple(label_batchify_fn_l))
+            return bf.Tuple(
+                bf.Tuple(feature_batchify_fn_l), bf.Tuple(label_batchify_fn_l)
+            )
 
     def process_train(self, df_or_dataset):
         if isinstance(df_or_dataset, TabularDataset):
             df_or_dataset = df_or_dataset.table
-        return parallel_transform(df_or_dataset, functools.partial(self.__call__, is_test=False))
+        return parallel_transform(
+            df_or_dataset, functools.partial(self.__call__, is_test=False)
+        )
 
     def process_test(self, df_or_dataset):
         if isinstance(df_or_dataset, TabularDataset):
             df_or_dataset = df_or_dataset.table
-        return parallel_transform(df_or_dataset, functools.partial(self.__call__, is_test=True))
+        return parallel_transform(
+            df_or_dataset, functools.partial(self.__call__, is_test=True)
+        )
 
     def __call__(self, data, is_test=False):
         """Transform the data into a list of fields.
@@ -508,18 +568,22 @@ class TabularBasicBERTPreprocessor:
         """
         feature_fields = []
         # Step 1: Get the text features + entity features
-        text_fields, entity_fields =\
-            process_text_entity_features(
-                data=data,
-                tokenizer=self._tokenizer,
-                text_columns=self.text_columns,
-                entity_columns=self.entity_columns,
-                max_length=self.max_length,
-                entity_props=OrderedDict([(col_name, self.column_properties[col_name])
-                                          for col_name in self.entity_columns]),
-                merge_text=self.merge_text,
-                store_token_offsets=self._store_token_offsets,
-                truncate_out_of_range=True)
+        text_fields, entity_fields = process_text_entity_features(
+            data=data,
+            tokenizer=self._tokenizer,
+            text_columns=self.text_columns,
+            entity_columns=self.entity_columns,
+            max_length=self.max_length,
+            entity_props=OrderedDict(
+                [
+                    (col_name, self.column_properties[col_name])
+                    for col_name in self.entity_columns
+                ]
+            ),
+            merge_text=self.merge_text,
+            store_token_offsets=self._store_token_offsets,
+            truncate_out_of_range=True,
+        )
         feature_fields.extend(text_fields)
         feature_fields.extend(entity_fields)
 
@@ -548,9 +612,13 @@ class TabularBasicBERTPreprocessor:
             for col_name in self.label_columns:
                 col_prop = self.column_properties[col_name]
                 if col_prop.type == _C.CATEGORICAL:
-                    label_fields.append(CategoricalField(col_prop.transform(data[col_name])))
+                    label_fields.append(
+                        CategoricalField(col_prop.transform(data[col_name]))
+                    )
                 elif col_prop.type == _C.NUMERICAL:
-                    label_fields.append(NumericalField(col_prop.transform(data[col_name])))
+                    label_fields.append(
+                        NumericalField(col_prop.transform(data[col_name]))
+                    )
                 else:
                     raise NotImplementedError
             return tuple(feature_fields), tuple(label_fields)

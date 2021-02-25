@@ -25,10 +25,14 @@ def _soft_log_loss(true_probs, predicted_probs):
     if len(true_probs.shape) != 2 or len(predicted_probs.shape) != 2:
         raise ValueError("both truth and prediction must be 2D numpy arrays")
     if true_probs.shape != predicted_probs.shape:
-        raise ValueError("truth and prediction must be 2D numpy arrays with the same shape")
+        raise ValueError(
+            "truth and prediction must be 2D numpy arrays with the same shape"
+        )
 
     # true_probs = np.clip(true_probs, a_min=EPS, a_max=None)
-    predicted_probs = np.clip(predicted_probs, a_min=EPS, a_max=None)  # clip 0s to avoid NaN
+    predicted_probs = np.clip(
+        predicted_probs, a_min=EPS, a_max=None
+    )  # clip 0s to avoid NaN
     true_probs = true_probs / true_probs.sum(axis=1, keepdims=1)  # renormalize
     predicted_probs = predicted_probs / predicted_probs.sum(axis=1, keepdims=1)
     losses = softloss(mx.nd.log(mx.nd.array(predicted_probs)), mx.nd.array(true_probs))
@@ -36,5 +40,6 @@ def _soft_log_loss(true_probs, predicted_probs):
 
 
 # Score for soft-classification (with soft, probabilistic labels):
-soft_log_loss = make_scorer('soft_log_loss', _soft_log_loss,
-                            greater_is_better=False, needs_proba=True)
+soft_log_loss = make_scorer(
+    "soft_log_loss", _soft_log_loss, greater_is_better=False, needs_proba=True
+)

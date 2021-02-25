@@ -43,6 +43,7 @@ class PromotionRungSystem(object):
     not be used for the searcher model (`ignore_data = True`), namely as long
     as the evaluation has not yet gone beyond level resume_from.
     """
+
     def __init__(self, rung_levels, promote_quantiles, max_t):
         self.max_t = max_t
         # The data entry in _rungs is a dict mapping config_key to
@@ -50,7 +51,8 @@ class PromotionRungSystem(object):
         assert len(rung_levels) == len(promote_quantiles)
         self._rungs = [
             RungEntry(level=x, prom_quant=y, data=dict())
-            for x, y in reversed(list(zip(rung_levels, promote_quantiles)))]
+            for x, y in reversed(list(zip(rung_levels, promote_quantiles)))
+        ]
         # Note: config_key are positions into _config, cast to str
         self._config = list()
         # _running maps str(task_id) to
@@ -83,8 +85,7 @@ class PromotionRungSystem(object):
                 return (not v[1]) and (config_key is None or k == config_key)
 
             num_top = int(num_recorded * prom_quant)
-            top_list = heapq.nlargest(
-                num_top, recorded.items(), key=lambda x: x[1][0])
+            top_list = heapq.nlargest(num_top, recorded.items(), key=lambda x: x[1][0])
             try:
                 ret_key = next(k for k, v in top_list if filter_pred(k, v))
             except StopIteration:
@@ -110,8 +111,7 @@ class PromotionRungSystem(object):
             _recorded = rung.data
             config_key = None
             if _milestone < self.max_t:
-                config_key = self._find_promotable_config(
-                    _recorded, prom_quant)
+                config_key = self._find_promotable_config(_recorded, prom_quant)
             if config_key is not None:
                 recorded = _recorded
                 milestone = _milestone
@@ -127,10 +127,11 @@ class PromotionRungSystem(object):
             assert not recorded[config_key][1]  # Sanity check
             recorded[config_key] = (reward, True)
             return {
-                'config': self._config[int(config_key)],
-                'config_key': config_key,
-                'milestone': milestone,
-                'next_milestone': next_milestone}
+                "config": self._config[int(config_key)],
+                "config_key": config_key,
+                "milestone": milestone,
+                "next_milestone": next_milestone,
+            }
 
     def on_task_add(self, task, skip_rungs, **kwargs):
         """
@@ -139,11 +140,11 @@ class PromotionRungSystem(object):
         to the next milestone (False). In the latter case, kwargs contains
         additional information about the promotion.
         """
-        new_config = kwargs.get('new_config', True)
+        new_config = kwargs.get("new_config", True)
         if new_config:
             # New config
             config_key = str(len(self._config))
-            self._config.append(copy.copy(task.args['config']))
+            self._config.append(copy.copy(task.args["config"]))
             # First milestone
             # If skip_rungs > 0, the lowest rung levels are not
             # milestones
@@ -153,16 +154,17 @@ class PromotionRungSystem(object):
             # Existing config is promoted
             # Note that self._rungs has already been updated in
             # on_task_schedule
-            assert 'milestone' in kwargs
-            assert 'config_key' in kwargs
-            config_key = kwargs['config_key']
-            assert self._config[int(config_key)] == task.args['config']
-            milestone = kwargs['milestone']
-            resume_from = kwargs.get('resume_from')
+            assert "milestone" in kwargs
+            assert "config_key" in kwargs
+            config_key = kwargs["config_key"]
+            assert self._config[int(config_key)] == task.args["config"]
+            milestone = kwargs["milestone"]
+            resume_from = kwargs.get("resume_from")
         self._running[str(task.task_id)] = {
-            'config_key': config_key,
-            'milestone': milestone,
-            'resume_from': resume_from}
+            "config_key": config_key,
+            "milestone": milestone,
+            "resume_from": resume_from,
+        }
 
     def on_task_report(self, task, cur_iter, cur_rew, skip_rungs):
         """
@@ -177,53 +179,63 @@ class PromotionRungSystem(object):
         :param cur_rew: Current reward_attr value of task
         :return: dict(task_continues, milestone_reached, next_milestone, ignore_data)
         """
-        assert cur_rew is not None, \
-            "Reward attribute must be a numerical value, not None"
+        assert (
+            cur_rew is not None
+        ), "Reward attribute must be a numerical value, not None"
         task_key = str(task.task_id)
         task_continues = True
         milestone_reached = False
         next_milestone = None
-        milestone = self._running[task_key]['milestone']
+        milestone = self._running[task_key]["milestone"]
         if cur_iter >= milestone:
-            assert cur_iter == milestone, \
-                "cur_iter = {} > {} = milestone. Make sure to report time attributes covering all milestones".format(
-                    cur_iter, milestone)
+            assert (
+                cur_iter == milestone
+            ), "cur_iter = {} > {} = milestone. Make sure to report time attributes covering all milestones".format(
+                cur_iter, milestone
+            )
             task_continues = False
             milestone_reached = True
-            config_key = self._running[task_key]['config_key']
-            assert self._config[int(config_key)] == task.args['config']
+            config_key = self._running[task_key]["config_key"]
+            assert self._config[int(config_key)] == task.args["config"]
             try:
-                rung_pos = next(i for i, v in enumerate(self._rungs)
-                                if v.level == milestone)
+                rung_pos = next(
+                    i for i, v in enumerate(self._rungs) if v.level == milestone
+                )
                 # Register reward at rung level (as not promoted)
                 prom_quant = self._rungs[rung_pos].prom_quant
                 recorded = self._rungs[rung_pos].data
                 recorded[config_key] = (cur_rew, False)
-                next_milestone = self._rungs[rung_pos - 1].level \
-                    if rung_pos > 0 else self.max_t
+                next_milestone = (
+                    self._rungs[rung_pos - 1].level if rung_pos > 0 else self.max_t
+                )
                 # Check whether config can be promoted immediately. If so,
                 # we do not have to stop the task
                 if milestone < self.max_t:
-                    if self._find_promotable_config(
-                            recorded, prom_quant,
-                            config_key=config_key) is not None:
+                    if (
+                        self._find_promotable_config(
+                            recorded, prom_quant, config_key=config_key
+                        )
+                        is not None
+                    ):
                         task_continues = True
                         recorded[config_key] = (cur_rew, True)
                         self._running[task_key] = {
-                            'config_key': config_key,
-                            'milestone': next_milestone,
-                            'resume_from': None}
+                            "config_key": config_key,
+                            "milestone": next_milestone,
+                            "resume_from": None,
+                        }
             except StopIteration:
                 # milestone not a rung level. This can happen, in particular
                 # if milestone == self.max_t
                 pass
-        resume_from = self._running[task_key]['resume_from']
+        resume_from = self._running[task_key]["resume_from"]
         ignore_data = (resume_from is not None) and (cur_iter <= resume_from)
         return {
-            'task_continues': task_continues,
-            'milestone_reached': milestone_reached,
-            'next_milestone': next_milestone,
-            'ignore_data': ignore_data}
+            "task_continues": task_continues,
+            "milestone_reached": milestone_reached,
+            "next_milestone": next_milestone,
+            "ignore_data": ignore_data,
+        }
 
     def on_task_remove(self, task):
         del self._running[str(task.task_id)]
@@ -250,14 +262,17 @@ class PromotionRungSystem(object):
             # Search for not yet promoted config in the top
             # prom_quant fraction
             num_top = int(num_recorded * prom_quant)
-            top_list = heapq.nlargest(
-                num_top, recorded.values(), key=lambda x: x[0])
+            top_list = heapq.nlargest(num_top, recorded.values(), key=lambda x: x[0])
             num_promotable = sum((not x) for _, x in top_list)
         return num_promotable, num_top
 
     def __repr__(self):
-        iters = " | ".join([
-            "Iter {:.3f}: {} of {}".format(
-                r.level, *self._num_promotable_config(r.data, r.prom_quant))
-            for r in self._rungs])
+        iters = " | ".join(
+            [
+                "Iter {:.3f}: {} of {}".format(
+                    r.level, *self._num_promotable_config(r.data, r.prom_quant)
+                )
+                for r in self._rungs
+            ]
+        )
         return "Rung system: " + iters

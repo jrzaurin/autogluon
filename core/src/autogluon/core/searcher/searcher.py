@@ -7,9 +7,7 @@ import numpy as np
 from .bayesopt.autogluon.debug_log import DebugLogPrinter
 from ..utils import DeprecationHelper
 
-__all__ = ['BaseSearcher',
-           'RandomSearcher',
-           'RandomSampling']
+__all__ = ["BaseSearcher", "RandomSearcher", "RandomSampling"]
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +21,7 @@ class BaseSearcher(object):
         The configuration space to sample from. It contains the full
         specification of the Hyperparameters with their priors
     """
+
     LOCK = mp.Lock()
 
     def __init__(self, configspace, reward_attribute=None):
@@ -35,7 +34,7 @@ class BaseSearcher(object):
         self.configspace = configspace
         self._results = OrderedDict()
         if reward_attribute is None:
-            reward_attribute = 'accuracy'
+            reward_attribute = "accuracy"
         self._reward_attribute = reward_attribute
 
     def configure_scheduler(self, scheduler):
@@ -55,7 +54,9 @@ class BaseSearcher(object):
         from ..scheduler import FIFOScheduler
         from ..scheduler.seq_scheduler import LocalSequentialScheduler
 
-        if isinstance(scheduler, FIFOScheduler) or isinstance(scheduler, LocalSequentialScheduler):
+        if isinstance(scheduler, FIFOScheduler) or isinstance(
+            scheduler, LocalSequentialScheduler
+        ):
             self._reward_attribute = scheduler._reward_attr
 
     @staticmethod
@@ -74,7 +75,9 @@ class BaseSearcher(object):
         returns: (config, info_dict)
             must return a valid configuration and a (possibly empty) info dict
         """
-        raise NotImplementedError(f'This function needs to be overwritten in {self.__class__.__name__}.')
+        raise NotImplementedError(
+            f"This function needs to be overwritten in {self.__class__.__name__}."
+        )
 
     def update(self, config, **kwargs):
         """Update the searcher with the newest metric report
@@ -97,8 +100,9 @@ class BaseSearcher(object):
 
         """
         reward = kwargs.get(self._reward_attribute)
-        assert reward is not None, \
-            "Missing reward attribute '{}'".format(self._reward_attribute)
+        assert reward is not None, "Missing reward attribute '{}'".format(
+            self._reward_attribute
+        )
         with self.LOCK:
             # _results is updated if reward is larger than the previous entry.
             # This is the correct behaviour for multi-fidelity schedulers,
@@ -161,7 +165,7 @@ class BaseSearcher(object):
 
     def get_best_reward(self):
         """Calculates the reward (i.e. validation performance) produced by training under the best configuration identified so far.
-           Assumes higher reward values indicate better performance.
+        Assumes higher reward values indicate better performance.
         """
         with self.LOCK:
             if self._results:
@@ -169,16 +173,14 @@ class BaseSearcher(object):
         return self._reward_while_pending()
 
     def get_reward(self, config):
-        """Calculates the reward (i.e. validation performance) produced by training with the given configuration.
-        """
+        """Calculates the reward (i.e. validation performance) produced by training with the given configuration."""
         k = pickle.dumps(config)
         with self.LOCK:
             assert k in self._results
             return self._results[k]
 
     def get_best_config(self):
-        """Returns the best configuration found so far.
-        """
+        """Returns the best configuration found so far."""
         with self.LOCK:
             if self._results:
                 config_pkl = max(self._results, key=self._results.get)
@@ -187,8 +189,7 @@ class BaseSearcher(object):
                 return dict()
 
     def get_best_config_reward(self):
-        """Returns the best configuration found so far, as well as the reward associated with this best config.
-        """
+        """Returns the best configuration found so far, as well as the reward associated with this best config."""
         with self.LOCK:
             if self._results:
                 config_pkl = max(self._results, key=self._results.get)
@@ -240,12 +241,12 @@ class BaseSearcher(object):
     def __repr__(self):
         config, reward = self.get_best_config_reward()
         reprstr = (
-                f'{self.__class__.__name__}(' +
-                f'\nConfigSpace: {self.configspace}.' +
-                f'\nNumber of Trials: {len(self._results)}.' +
-                f'\nBest Config: {config}' +
-                f'\nBest Reward: {reward}' +
-                f')'
+            f"{self.__class__.__name__}("
+            + f"\nConfigSpace: {self.configspace}."
+            + f"\nNumber of Trials: {len(self._results)}."
+            + f"\nBest Config: {config}"
+            + f"\nBest Reward: {reward}"
+            + f")"
         )
         return reprstr
 
@@ -285,18 +286,17 @@ class RandomSearcher(BaseSearcher):
     >>> searcher = RandomSearcher(cs)
     >>> searcher.get_config()
     """
+
     MAX_RETRIES = 100
 
     def __init__(self, configspace, **kwargs):
-        super().__init__(
-            configspace, reward_attribute=kwargs.get('reward_attribute'))
-        self._first_is_default = kwargs.get('first_is_default', True)
+        super().__init__(configspace, reward_attribute=kwargs.get("reward_attribute"))
+        self._first_is_default = kwargs.get("first_is_default", True)
         # We use an explicit random_state here, in order to better support
         # checkpoint and resume
-        self.random_state = np.random.RandomState(
-            kwargs.get('random_seed', 31415927))
+        self.random_state = np.random.RandomState(kwargs.get("random_seed", 31415927))
         # Debug log printing (optional)
-        self._debug_log = kwargs.get('debug_log')
+        self._debug_log = kwargs.get("debug_log")
         if self._debug_log is not None:
             if isinstance(self._debug_log, bool):
                 if self._debug_log:
@@ -338,7 +338,7 @@ class RandomSearcher(BaseSearcher):
         """
         self.configspace.random = self.random_state
         if self._debug_log is not None:
-            self._debug_log.start_get_config('random')
+            self._debug_log.start_get_config("random")
         if self._first_is_default and (not self._results):
             # Try default config first
             new_config = self.configspace.get_default_configuration().get_dictionary()
@@ -347,8 +347,9 @@ class RandomSearcher(BaseSearcher):
         with self.LOCK:
             num_tries = 1
             while pickle.dumps(new_config) in self._results:
-                assert num_tries <= self.MAX_RETRIES, \
-                    f"Cannot find new config in BaseSearcher, even after {self.MAX_RETRIES} trials"
+                assert (
+                    num_tries <= self.MAX_RETRIES
+                ), f"Cannot find new config in BaseSearcher, even after {self.MAX_RETRIES} trials"
                 new_config = self.configspace.sample_configuration().get_dictionary()
                 num_tries += 1
             self._results[pickle.dumps(new_config)] = self._reward_while_pending()
@@ -366,28 +367,27 @@ class RandomSearcher(BaseSearcher):
             if self._resource_attribute is not None:
                 # For HyperbandScheduler, also add the resource attribute
                 resource = int(kwargs[self._resource_attribute])
-                config_id = config_id + ':{}'.format(resource)
-            msg = "Update for config_id {}: reward = {}".format(
-                config_id, reward)
+                config_id = config_id + ":{}".format(resource)
+            msg = "Update for config_id {}: reward = {}".format(config_id, reward)
             logger.info(msg)
 
     def get_state(self):
-        state = {
-            'random_state': self.random_state,
-            'results': self._results}
+        state = {"random_state": self.random_state, "results": self._results}
         if self._debug_log is not None:
-            state['debug_log'] = self._debug_log.get_mutable_state()
+            state["debug_log"] = self._debug_log.get_mutable_state()
         return state
 
     def clone_from_state(self, state):
         new_searcher = RandomSearcher(
-            self.configspace, reward_attribute=self._reward_attribute,
+            self.configspace,
+            reward_attribute=self._reward_attribute,
             first_is_default=self._first_is_default,
-            debug_log=self._debug_log)
-        new_searcher.random_state = state['random_state']
-        new_searcher._results = state['results']
-        if self._debug_log and 'debug_log' in state:
-            new_searcher._debug_log.set_mutable_state(state['debug_log'])
+            debug_log=self._debug_log,
+        )
+        new_searcher.random_state = state["random_state"]
+        new_searcher._results = state["results"]
+        if self._debug_log and "debug_log" in state:
+            new_searcher._debug_log.set_mutable_state(state["debug_log"])
         return new_searcher
 
     @property
@@ -395,4 +395,4 @@ class RandomSearcher(BaseSearcher):
         return self._debug_log
 
 
-RandomSampling = DeprecationHelper(RandomSearcher, 'RandomSampling')
+RandomSampling = DeprecationHelper(RandomSearcher, "RandomSampling")

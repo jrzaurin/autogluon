@@ -2,14 +2,14 @@
 import multiprocessing
 import multiprocessing.queues
 
+
 class SharedCounter(object):
-    """ A synchronized shared counter.
-    """
+    """A synchronized shared counter."""
 
-    def __init__(self, n = 0):
-        self.count = multiprocessing.Value('i', n)
+    def __init__(self, n=0):
+        self.count = multiprocessing.Value("i", n)
 
-    def increment(self, n = 1):
+    def increment(self, n=1):
         """ Increment the counter by n (default = 1) """
         with self.count.get_lock():
             self.count.value += n
@@ -21,7 +21,7 @@ class SharedCounter(object):
 
 
 class Queue(multiprocessing.queues.Queue):
-    """ A portable implementation of multiprocessing.Queue.
+    """A portable implementation of multiprocessing.Queue.
 
     Because of multithreading / multiprocessing semantics, Queue.qsize() may
     raise the NotImplementedError exception on Unix platforms like Mac OS X
@@ -32,6 +32,7 @@ class Queue(multiprocessing.queues.Queue):
     being raised, but also allows us to implement a reliable version of both
     qsize() and empty().
     """
+
     def __init__(self, *args, **kwargs):
         super(Queue, self).__init__(*args, ctx=multiprocessing.get_context(), **kwargs)
         self.size = SharedCounter(0)

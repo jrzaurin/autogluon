@@ -1,9 +1,14 @@
 import logging
 from ...utils import get_gpu_count, get_cpu_count
 
-__all__ = ['Resources', 'DistributedResource',
-           'get_remote_cpu_count', 'get_remote_gpu_count',
-           'get_gpu_count', 'get_cpu_count']
+__all__ = [
+    "Resources",
+    "DistributedResource",
+    "get_remote_cpu_count",
+    "get_remote_gpu_count",
+    "get_gpu_count",
+    "get_cpu_count",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +26,7 @@ class Resources(object):
         >>> resource = Resources(num_cpus=2, num_gpus=0)
         >>> task = Task(my_task, {}, resource)
     """
+
     def __init__(self, num_cpus=1, num_gpus=0):
         self.num_cpus = num_cpus
         self.num_gpus = num_gpus
@@ -39,16 +45,16 @@ class Resources(object):
         self.ready = True
 
     def __repr__(self):
-        reprstr = self.__class__.__name__ + '(' \
-            + 'nCPUs = ' + str(self.num_cpus)
+        reprstr = self.__class__.__name__ + "(" + "nCPUs = " + str(self.num_cpus)
         if len(self.cpu_ids) > 0:
-            reprstr += ', CPU_IDs = {' + str(self.cpu_ids) + '}'
+            reprstr += ", CPU_IDs = {" + str(self.cpu_ids) + "}"
         if self.num_gpus > 0:
-            reprstr += ', nGPUs = ' + str(self.num_gpus)
+            reprstr += ", nGPUs = " + str(self.num_gpus)
         if len(self.gpu_ids) > 0:
-            reprstr += ', GPU_IDs = {' + str(self.gpu_ids) + '}'
-        reprstr += ')'
+            reprstr += ", GPU_IDs = {" + str(self.gpu_ids) + "}"
+        reprstr += ")"
         return reprstr
+
 
 class DistributedResource(Resources):
     """Resource for AutoGluon Distributed Scheduler :class:`autogluon.distributed.DistributedTaskScheduler`
@@ -63,6 +69,7 @@ class DistributedResource(Resources):
         >>> resource = DistributedResource(num_cpus=2, num_gpus=1)
         >>> task = Task(my_task, {}, resource)
     """
+
     def __init__(self, num_cpus=1, num_gpus=0):
         super(DistributedResource, self).__init__(num_cpus, num_gpus)
         self.node = None
@@ -72,22 +79,23 @@ class DistributedResource(Resources):
         super(DistributedResource, self)._ready(cids, gids)
         self.node = remote
         self.is_ready = True
- 
+
     def _release(self):
         super(DistributedResource, self)._release()
         self.node = None
 
     def __repr__(self):
-        reprstr = self.__class__.__name__ + '(\n\t'
-        if self.node: reprstr  += 'Node = ' + str(self.node)
-        reprstr  += '\n\tnCPUs = ' + str(self.num_cpus)
+        reprstr = self.__class__.__name__ + "(\n\t"
+        if self.node:
+            reprstr += "Node = " + str(self.node)
+        reprstr += "\n\tnCPUs = " + str(self.num_cpus)
         if len(self.cpu_ids) > 0:
-            reprstr += ', CPU_IDs = {' + str(self.cpu_ids) + '}'
+            reprstr += ", CPU_IDs = {" + str(self.cpu_ids) + "}"
         if self.num_gpus > 0:
-            reprstr += ', nGPUs = ' + str(self.num_gpus)
+            reprstr += ", nGPUs = " + str(self.num_gpus)
         if len(self.gpu_ids) > 0:
-            reprstr += ', GPU_IDs = {' + str(self.gpu_ids) + '}'
-        reprstr += ')'
+            reprstr += ", GPU_IDs = {" + str(self.gpu_ids) + "}"
+        reprstr += ")"
         return reprstr
 
 

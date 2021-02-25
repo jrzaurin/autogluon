@@ -12,22 +12,21 @@ from mxnet.gluon.block import Block
 
 random_mirror = True
 
-RESAMPLE_MODE=PIL.Image.BICUBIC
+RESAMPLE_MODE = PIL.Image.BICUBIC
+
 
 def ShearX(img, v):  # [-0.3, 0.3]
     assert -0.3 <= v <= 0.3
     if random_mirror and random.random() > 0.5:
         v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, v, 0, 0, 1, 0),
-                         RESAMPLE_MODE)
+    return img.transform(img.size, PIL.Image.AFFINE, (1, v, 0, 0, 1, 0), RESAMPLE_MODE)
 
 
 def ShearY(img, v):  # [-0.3, 0.3]
     assert -0.3 <= v <= 0.3
     if random_mirror and random.random() > 0.5:
         v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, v, 1, 0),
-                         RESAMPLE_MODE)
+    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, v, 1, 0), RESAMPLE_MODE)
 
 
 def TranslateX(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
@@ -35,8 +34,7 @@ def TranslateX(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
     if random_mirror and random.random() > 0.5:
         v = -v
     v = v * img.size[0]
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, v, 0, 1, 0),
-                         RESAMPLE_MODE)
+    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, v, 0, 1, 0), RESAMPLE_MODE)
 
 
 def TranslateY(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
@@ -44,24 +42,21 @@ def TranslateY(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
     if random_mirror and random.random() > 0.5:
         v = -v
     v = v * img.size[1]
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, 0, 1, v),
-                         RESAMPLE_MODE)
+    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, 0, 1, v), RESAMPLE_MODE)
 
 
 def TranslateXabs(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
     assert 0 <= v
     if random.random() > 0.5:
         v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, v, 0, 1, 0),
-                         RESAMPLE_MODE)
+    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, v, 0, 1, 0), RESAMPLE_MODE)
 
 
 def TranslateYabs(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
     assert 0 <= v
     if random.random() > 0.5:
         v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, 0, 1, v),
-                         RESAMPLE_MODE)
+    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, 0, 1, v), RESAMPLE_MODE)
 
 
 def Rotate(img, v):  # [-30, 30]
@@ -102,9 +97,10 @@ def SolarizeAdd(img, addition=0, threshold=128):
 
 
 def Posterize(img, v):  # [4, 8]
-    #assert 4 <= v <= 8
+    # assert 4 <= v <= 8
     v = int(v)
     return PIL.ImageOps.posterize(img, v)
+
 
 def Contrast(img, v):  # [0.1,1.9]
     assert 0.1 <= v <= 1.9
@@ -134,8 +130,8 @@ def CutoutAbs(img, v):  # [0, 60] => percentage: [0, 0.2]
     x0 = np.random.uniform(w)
     y0 = np.random.uniform(h)
 
-    x0 = int(max(0, x0 - v / 2.))
-    y0 = int(max(0, y0 - v / 2.))
+    x0 = int(max(0, x0 - v / 2.0))
+    y0 = int(max(0, y0 - v / 2.0))
     x1 = min(w, x0 + v)
     y1 = min(h, y0 + v)
 
@@ -149,35 +145,35 @@ def CutoutAbs(img, v):  # [0, 60] => percentage: [0, 0.2]
 
 def Cutout(img, v):  # [0, 60] => percentage: [0, 0.2]
     assert 0.0 <= v <= 0.2
-    if v <= 0.:
+    if v <= 0.0:
         return img
 
     v = v * img.size[0]
     return CutoutAbs(img, v)
 
 
-
 def TranslateYAbs(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
     assert 0 <= v <= 10
     if random.random() > 0.5:
         v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, 0, 1, v),
-                         resample=RESAMPLE_MODE)
+    return img.transform(
+        img.size, PIL.Image.AFFINE, (1, 0, 0, 0, 1, v), resample=RESAMPLE_MODE
+    )
 
 
 def TranslateXAbs(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
     assert 0 <= v <= 10
     if random.random() > 0.5:
         v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, v, 0, 1, 0),
-                         resample=RESAMPLE_MODE)
+    return img.transform(
+        img.size, PIL.Image.AFFINE, (1, 0, v, 0, 1, 0), resample=RESAMPLE_MODE
+    )
 
 
 def Posterize2(img, v):  # [0, 4]
     assert 0 <= v <= 4
     v = int(v)
     return PIL.ImageOps.posterize(img, v)
-
 
 
 def SamplePairing(imgs):  # [0, 0.4]
@@ -218,7 +214,6 @@ def augment_list(for_autoaug=True):  # 16 oeprations and their ranges
     return l
 
 
-
 augment_dict = {fn.__name__: (fn, v1, v2) for fn, v1, v2 in augment_list()}
 
 PARAMETER_MAX = 10
@@ -235,20 +230,22 @@ def int_parameter(level, maxval):
 def autoaug2fastaa(f):
     def autoaug():
         mapper = defaultdict(lambda: lambda x: x)
-        mapper.update({
-            'ShearX': lambda x: float_parameter(x, 0.3),
-            'ShearY': lambda x: float_parameter(x, 0.3),
-            'TranslateX': lambda x: int_parameter(x, 10),
-            'TranslateY': lambda x: int_parameter(x, 10),
-            'Rotate': lambda x: int_parameter(x, 30),
-            'Solarize': lambda x: 256 - int_parameter(x, 256),
-            'Posterize2': lambda x: 4 - int_parameter(x, 4),
-            'Contrast': lambda x: float_parameter(x, 1.8) + .1,
-            'Color': lambda x: float_parameter(x, 1.8) + .1,
-            'Brightness': lambda x: float_parameter(x, 1.8) + .1,
-            'Sharpness': lambda x: float_parameter(x, 1.8) + .1,
-            'CutoutAbs': lambda x: int_parameter(x, 20)
-        })
+        mapper.update(
+            {
+                "ShearX": lambda x: float_parameter(x, 0.3),
+                "ShearY": lambda x: float_parameter(x, 0.3),
+                "TranslateX": lambda x: int_parameter(x, 10),
+                "TranslateY": lambda x: int_parameter(x, 10),
+                "Rotate": lambda x: int_parameter(x, 30),
+                "Solarize": lambda x: 256 - int_parameter(x, 256),
+                "Posterize2": lambda x: 4 - int_parameter(x, 4),
+                "Contrast": lambda x: float_parameter(x, 1.8) + 0.1,
+                "Color": lambda x: float_parameter(x, 1.8) + 0.1,
+                "Brightness": lambda x: float_parameter(x, 1.8) + 0.1,
+                "Sharpness": lambda x: float_parameter(x, 1.8) + 0.1,
+                "CutoutAbs": lambda x: int_parameter(x, 20),
+            }
+        )
 
         def low_high(name, prev_value):
             _, low, high = get_augment(name)
@@ -257,7 +254,12 @@ def autoaug2fastaa(f):
         policies = f()
         new_policies = []
         for policy in policies:
-            new_policies.append([(name, pr, low_high(name, mapper[name](level))) for name, pr, level in policy])
+            new_policies.append(
+                [
+                    (name, pr, low_high(name, mapper[name](level)))
+                    for name, pr, level in policy
+                ]
+            )
         return new_policies
 
     return autoaug
@@ -276,11 +278,11 @@ def rand_augment_list():  # 16 oeprations and their ranges
         (Contrast, 0.1, 1.9),
         (Brightness, 0.1, 1.9),
         (Sharpness, 0.1, 1.9),
-        (ShearX, 0., 0.3),
-        (ShearY, 0., 0.3),
+        (ShearX, 0.0, 0.3),
+        (ShearY, 0.0, 0.3),
         (CutoutAbs, 0, 40),
-        (TranslateXabs, 0., 100),
-        (TranslateYabs, 0., 100),
+        (TranslateXabs, 0.0, 100),
+        (TranslateYabs, 0.0, 100),
     ]
 
     return l
@@ -289,61 +291,62 @@ def rand_augment_list():  # 16 oeprations and their ranges
 @autoaug2fastaa
 def autoaug_cifar10_policies():
     return [
-        [('Invert', 0.1, 7), ('Contrast', 0.2, 6)],
-        [('Rotate', 0.7, 2), ('TranslateXAbs', 0.3, 9)],
-        [('Sharpness', 0.8, 1), ('Sharpness', 0.9, 3)],
-        [('ShearY', 0.5, 8), ('TranslateYAbs', 0.7, 9)],
-        [('AutoContrast', 0.5, 8), ('Equalize', 0.9, 2)],
-        [('ShearY', 0.2, 7), ('Posterize2', 0.3, 7)],
-        [('Color', 0.4, 3), ('Brightness', 0.6, 7)],
-        [('Sharpness', 0.3, 9), ('Brightness', 0.7, 9)],
-        [('Equalize', 0.6, 5), ('Equalize', 0.5, 1)],
-        [('Contrast', 0.6, 7), ('Sharpness', 0.6, 5)],
-        [('Color', 0.7, 7), ('TranslateXAbs', 0.5, 8)],
-        [('Equalize', 0.3, 7), ('AutoContrast', 0.4, 8)],
-        [('TranslateYAbs', 0.4, 3), ('Sharpness', 0.2, 6)],
-        [('Brightness', 0.9, 6), ('Color', 0.2, 6)],
-        [('Solarize', 0.5, 2), ('Invert', 0.0, 3)],
-        [('Equalize', 0.2, 0), ('AutoContrast', 0.6, 0)],
-        [('Equalize', 0.2, 8), ('Equalize', 0.6, 4)],
-        [('Color', 0.9, 9), ('Equalize', 0.6, 6)],
-        [('AutoContrast', 0.8, 4), ('Solarize', 0.2, 8)],
-        [('Brightness', 0.1, 3), ('Color', 0.7, 0)],
-        [('Solarize', 0.4, 5), ('AutoContrast', 0.9, 3)],
-        [('TranslateYAbs', 0.9, 9), ('TranslateYAbs', 0.7, 9)],
-        [('AutoContrast', 0.9, 2), ('Solarize', 0.8, 3)],
-        [('Equalize', 0.8, 8), ('Invert', 0.1, 3)],
-        [('TranslateYAbs', 0.7, 9), ('AutoContrast', 0.9, 1)],
+        [("Invert", 0.1, 7), ("Contrast", 0.2, 6)],
+        [("Rotate", 0.7, 2), ("TranslateXAbs", 0.3, 9)],
+        [("Sharpness", 0.8, 1), ("Sharpness", 0.9, 3)],
+        [("ShearY", 0.5, 8), ("TranslateYAbs", 0.7, 9)],
+        [("AutoContrast", 0.5, 8), ("Equalize", 0.9, 2)],
+        [("ShearY", 0.2, 7), ("Posterize2", 0.3, 7)],
+        [("Color", 0.4, 3), ("Brightness", 0.6, 7)],
+        [("Sharpness", 0.3, 9), ("Brightness", 0.7, 9)],
+        [("Equalize", 0.6, 5), ("Equalize", 0.5, 1)],
+        [("Contrast", 0.6, 7), ("Sharpness", 0.6, 5)],
+        [("Color", 0.7, 7), ("TranslateXAbs", 0.5, 8)],
+        [("Equalize", 0.3, 7), ("AutoContrast", 0.4, 8)],
+        [("TranslateYAbs", 0.4, 3), ("Sharpness", 0.2, 6)],
+        [("Brightness", 0.9, 6), ("Color", 0.2, 6)],
+        [("Solarize", 0.5, 2), ("Invert", 0.0, 3)],
+        [("Equalize", 0.2, 0), ("AutoContrast", 0.6, 0)],
+        [("Equalize", 0.2, 8), ("Equalize", 0.6, 4)],
+        [("Color", 0.9, 9), ("Equalize", 0.6, 6)],
+        [("AutoContrast", 0.8, 4), ("Solarize", 0.2, 8)],
+        [("Brightness", 0.1, 3), ("Color", 0.7, 0)],
+        [("Solarize", 0.4, 5), ("AutoContrast", 0.9, 3)],
+        [("TranslateYAbs", 0.9, 9), ("TranslateYAbs", 0.7, 9)],
+        [("AutoContrast", 0.9, 2), ("Solarize", 0.8, 3)],
+        [("Equalize", 0.8, 8), ("Invert", 0.1, 3)],
+        [("TranslateYAbs", 0.7, 9), ("AutoContrast", 0.9, 1)],
     ]
+
 
 @autoaug2fastaa
 def autoaug_imagenet_policies():
     return [
-        [('Posterize2', 0.4, 8), ('Rotate', 0.6, 9)],
-        [('Solarize', 0.6, 5), ('AutoContrast', 0.6, 5)],
-        [('Equalize', 0.8, 8), ('Equalize', 0.6, 3)],
-        [('Posterize2', 0.6, 7), ('Posterize2', 0.6, 6)],
-        [('Equalize', 0.4, 7), ('Solarize', 0.2, 4)],
-        [('Equalize', 0.4, 4), ('Rotate', 0.8, 8)],
-        [('Solarize', 0.6, 3), ('Equalize', 0.6, 7)],
-        [('Posterize2', 0.8, 5), ('Equalize', 1.0, 2)],
-        [('Rotate', 0.2, 3), ('Solarize', 0.6, 8)],
-        [('Equalize', 0.6, 8), ('Posterize2', 0.4, 6)],
-        [('Rotate', 0.8, 8), ('Color', 0.4, 0)],
-        [('Rotate', 0.4, 9), ('Equalize', 0.6, 2)],
-        [('Equalize', 0.0, 7), ('Equalize', 0.8, 8)],
-        [('Invert', 0.6, 4), ('Equalize', 1.0, 8)],
-        [('Color', 0.6, 4), ('Contrast', 1.0, 8)],
-        [('Rotate', 0.8, 8), ('Color', 1.0, 0)],
-        [('Color', 0.8, 8), ('Solarize', 0.8, 7)],
-        [('Sharpness', 0.4, 7), ('Invert', 0.6, 8)],
-        [('ShearX', 0.6, 5), ('Equalize', 1.0, 9)],
-        [('Color', 0.4, 0), ('Equalize', 0.6, 3)],
-        [('Equalize', 0.4, 7), ('Solarize', 0.2, 4)],
-        [('Solarize', 0.6, 5), ('AutoContrast', 0.6, 5)],
-        [('Invert', 0.6, 4), ('Equalize', 1.0, 8)],
-        [('Color', 0.6, 4), ('Contrast', 1.0, 8)],
-        [('Equalize', 0.8, 8), ('Equalize', 0.6, 3)],
+        [("Posterize2", 0.4, 8), ("Rotate", 0.6, 9)],
+        [("Solarize", 0.6, 5), ("AutoContrast", 0.6, 5)],
+        [("Equalize", 0.8, 8), ("Equalize", 0.6, 3)],
+        [("Posterize2", 0.6, 7), ("Posterize2", 0.6, 6)],
+        [("Equalize", 0.4, 7), ("Solarize", 0.2, 4)],
+        [("Equalize", 0.4, 4), ("Rotate", 0.8, 8)],
+        [("Solarize", 0.6, 3), ("Equalize", 0.6, 7)],
+        [("Posterize2", 0.8, 5), ("Equalize", 1.0, 2)],
+        [("Rotate", 0.2, 3), ("Solarize", 0.6, 8)],
+        [("Equalize", 0.6, 8), ("Posterize2", 0.4, 6)],
+        [("Rotate", 0.8, 8), ("Color", 0.4, 0)],
+        [("Rotate", 0.4, 9), ("Equalize", 0.6, 2)],
+        [("Equalize", 0.0, 7), ("Equalize", 0.8, 8)],
+        [("Invert", 0.6, 4), ("Equalize", 1.0, 8)],
+        [("Color", 0.6, 4), ("Contrast", 1.0, 8)],
+        [("Rotate", 0.8, 8), ("Color", 1.0, 0)],
+        [("Color", 0.8, 8), ("Solarize", 0.8, 7)],
+        [("Sharpness", 0.4, 7), ("Invert", 0.6, 8)],
+        [("ShearX", 0.6, 5), ("Equalize", 1.0, 9)],
+        [("Color", 0.4, 0), ("Equalize", 0.6, 3)],
+        [("Equalize", 0.4, 7), ("Solarize", 0.2, 4)],
+        [("Solarize", 0.6, 5), ("AutoContrast", 0.6, 5)],
+        [("Invert", 0.6, 4), ("Equalize", 1.0, 8)],
+        [("Color", 0.6, 4), ("Contrast", 1.0, 8)],
+        [("Equalize", 0.8, 8), ("Equalize", 0.6, 3)],
     ]
 
 
@@ -354,6 +357,7 @@ def get_augment(name):
 def apply_augment(img, name, level):
     augment_fn, low, high = get_augment(name)
     return augment_fn(img.copy(), level * (high - low) + low)
+
 
 class Augmentation(object):
     def __init__(self, policies):
@@ -373,6 +377,7 @@ class Augmentation(object):
                 img = apply_augment(img, name, level)
         return img
 
+
 class AugmentationBlock(Block):
     r"""
     AutoAugment Block
@@ -382,6 +387,7 @@ class AugmentationBlock(Block):
     >>> from autogluon.vision.utils.augment import AugmentationBlock, autoaug_imagenet_policies
     >>> aa_transform = AugmentationBlock(autoaug_imagenet_policies())
     """
+
     def __init__(self, policies):
         """
         plicies : list of (name, pr, level)
@@ -402,6 +408,7 @@ class AugmentationBlock(Block):
         img = self.tond(img)
         return img
 
+
 class RandAugment(object):
     def __init__(self, n, m):
         self.n = n
@@ -418,4 +425,3 @@ class RandAugment(object):
             val = (float(self.m) / 30) * float(maxval - minval) + minval
             img = op(img, val)
         return img
-

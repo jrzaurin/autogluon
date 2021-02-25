@@ -9,13 +9,15 @@ class EasyDict(dict):
             setattr(self, k, v)
         # Class attributes
         for k in self.__class__.__dict__.keys():
-            if not (k.startswith('__') and k.endswith('__')) and not k in ('update', 'pop'):
+            if not (k.startswith("__") and k.endswith("__")) and not k in (
+                "update",
+                "pop",
+            ):
                 setattr(self, k, getattr(self, k))
 
     def __setattr__(self, name, value):
         if isinstance(value, (list, tuple)):
-            value = [self.__class__(x)
-                     if isinstance(x, dict) else x for x in value]
+            value = [self.__class__(x) if isinstance(x, dict) else x for x in value]
         elif isinstance(value, dict) and not isinstance(value, self.__class__):
             value = self.__class__(value)
         super(EasyDict, self).__setattr__(name, value)
@@ -32,4 +34,3 @@ class EasyDict(dict):
     def pop(self, k, d=None):
         delattr(self, k)
         return super(EasyDict, self).pop(k, d)
-

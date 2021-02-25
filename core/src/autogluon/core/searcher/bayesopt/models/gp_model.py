@@ -29,13 +29,17 @@ class InternalCandidateEvaluations(NamedTuple):
 # is the case only for internal states, the member GPMXNetModel.state has
 # PendingEvaluation entries without the fantasy samples.
 def get_internal_candidate_evaluations(
-        state: TuningJobState, active_metric: str, normalize_targets: bool,
-        num_fantasize_samples: int) -> InternalCandidateEvaluations:
+    state: TuningJobState,
+    active_metric: str,
+    normalize_targets: bool,
+    num_fantasize_samples: int,
+) -> InternalCandidateEvaluations:
     candidates_ndarray = []
     evaluation_values = []
     for candidate_evaluation in state.candidate_evaluations:
         candidates_ndarray.append(
-            state.hp_ranges.to_ndarray(candidate_evaluation.candidate))
+            state.hp_ranges.to_ndarray(candidate_evaluation.candidate)
+        )
         evaluation_values.append(candidate_evaluation.metrics[active_metric])
     X = np.vstack(candidates_ndarray)
     # Normalize
@@ -55,12 +59,15 @@ def get_internal_candidate_evaluations(
         fanta_lst = []
         cand_lst = []
         for pending_eval in state.pending_evaluations:
-            assert isinstance(pending_eval, FantasizedPendingEvaluation), \
-                "state.pending_evaluations has to contain FantasizedPendingEvaluation"
+            assert isinstance(
+                pending_eval, FantasizedPendingEvaluation
+            ), "state.pending_evaluations has to contain FantasizedPendingEvaluation"
             fantasies = pending_eval.fantasies[active_metric]
-            assert fantasies.size == num_fantasize_samples, \
-                "All state.pending_evaluations entries must have length {}".format(
-                    num_fantasize_samples)
+            assert (
+                fantasies.size == num_fantasize_samples
+            ), "All state.pending_evaluations entries must have length {}".format(
+                num_fantasize_samples
+            )
             fanta_lst.append(fantasies.reshape((1, -1)))
             cand_lst.append(state.hp_ranges.to_ndarray(pending_eval.candidate))
         y = np.vstack([y * np.ones((1, num_fantasize_samples))] + fanta_lst)
@@ -70,12 +77,18 @@ def get_internal_candidate_evaluations(
 
 class GaussProcSurrogateModel(BaseSurrogateModel):
     def __init__(
-            self, state: TuningJobState, active_metric: str, random_seed: int,
-            gpmodel: GPModel, fit_parameters: bool, num_fantasy_samples: int,
-            normalize_targets: bool = True,
-            profiler: GPMXNetSimpleProfiler = None,
-            debug_log: Optional[DebugLogPrinter] = None,
-            debug_fantasy_values = None):
+        self,
+        state: TuningJobState,
+        active_metric: str,
+        random_seed: int,
+        gpmodel: GPModel,
+        fit_parameters: bool,
+        num_fantasy_samples: int,
+        normalize_targets: bool = True,
+        profiler: GPMXNetSimpleProfiler = None,
+        debug_log: Optional[DebugLogPrinter] = None,
+        debug_fantasy_values=None,
+    ):
         """
         Given a TuningJobState state, the corresponding posterior state is
         computed here, based on which predictions are supported.
@@ -122,36 +135,43 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
         Note: Different to GPyOpt, means and stddevs are de-normalized here.
         """
         predictions_list_denormalized = []
-        for posterior_mean, posterior_variance in self._gpmodel.predict(
-                inputs):
-            assert posterior_mean.shape[0] == inputs.shape[0], \
-                (posterior_mean.shape, inputs.shape)
-            assert posterior_variance.shape == (inputs.shape[0],), \
-                (posterior_variance.shape, inputs.shape)
+        for posterior_mean, posterior_variance in self._gpmodel.predict(inputs):
+            assert posterior_mean.shape[0] == inputs.shape[0], (
+                posterior_mean.shape,
+                inputs.shape,
+            )
+            assert posterior_variance.shape == (inputs.shape[0],), (
+                posterior_variance.shape,
+                inputs.shape,
+            )
             if self.state.pending_evaluations:
                 # If there are pending candidates with fantasy values,
                 # posterior_mean must be a matrix
-                assert posterior_mean.ndim == 2 and \
-                    posterior_mean.shape[1] == self.num_fantasy_samples, \
-                    (posterior_mean.shape, self.num_fantasy_samples)
+                assert (
+                    posterior_mean.ndim == 2
+                    and posterior_mean.shape[1] == self.num_fantasy_samples
+                ), (posterior_mean.shape, self.num_fantasy_samples)
             mean_denorm = posterior_mean * self.std + self.mean
             std_denorm = np.sqrt(posterior_variance) * self.std
             predictions_list_denormalized.append(
-                {'mean': mean_denorm, 'std': std_denorm})
+                {"mean": mean_denorm, "std": std_denorm}
+            )
         return predictions_list_denormalized
 
     def backward_gradient(
-            self, input: np.ndarray,
-            head_gradients: List[Dict[str, np.ndarray]]) -> List[np.ndarray]:
+        self, input: np.ndarray, head_gradients: List[Dict[str, np.ndarray]]
+    ) -> List[np.ndarray]:
         poster_states = self.posterior_states()
-        assert poster_states is not None, \
-            "Cannot run backward_gradient without a posterior state"
-        assert len(poster_states) == len(head_gradients), \
-            "len(posterior_states) = {} != {} = len(head_gradients)".format(
-                len(poster_states), len(head_gradients))
+        assert (
+            poster_states is not None
+        ), "Cannot run backward_gradient without a posterior state"
+        assert len(poster_states) == len(
+            head_gradients
+        ), "len(posterior_states) = {} != {} = len(head_gradients)".format(
+            len(poster_states), len(head_gradients)
+        )
         return [
-            poster_state.backward_gradient(
-                input, head_gradient, self.mean, self.std)
+            poster_state.backward_gradient(input, head_gradient, self.mean, self.std)
             for poster_state, head_gradient in zip(poster_states, head_gradients)
         ]
 
@@ -181,8 +201,7 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
     def set_params(self, param_dict):
         self._gpmodel.set_params(param_dict)
 
-    def _compute_posterior(
-            self, fit_parameters: bool, profiler: GPMXNetSimpleProfiler):
+    def _compute_posterior(self, fit_parameters: bool, profiler: GPMXNetSimpleProfiler):
         """
         Completes __init__, by computing the posterior. If fit_parameters, this
         includes optimizing the surrogate model parameters.
@@ -202,12 +221,12 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
                 hp_ranges=self.state.hp_ranges,
                 candidate_evaluations=self.state.candidate_evaluations,
                 failed_candidates=self.state.failed_candidates,
-                pending_evaluations=[])
+                pending_evaluations=[],
+            )
         self._posterior_for_state(no_pending_state, fit_parameters, profiler)
         if self.state.pending_evaluations:
             # Sample fantasy values for pending evals
-            pending_configs = [
-                x.candidate for x in self.state.pending_evaluations]
+            pending_configs = [x.candidate for x in self.state.pending_evaluations]
             new_pending = self._draw_fantasy_values(pending_configs)
             # Compute posterior for state with pending evals
             # Note: profiler is not passed here, this would overwrite the
@@ -216,9 +235,11 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
                 hp_ranges=self.state.hp_ranges,
                 candidate_evaluations=self.state.candidate_evaluations,
                 failed_candidates=self.state.failed_candidates,
-                pending_evaluations=new_pending)
+                pending_evaluations=new_pending,
+            )
             self._posterior_for_state(
-                with_pending_state, fit_parameters=False, profiler=None)
+                with_pending_state, fit_parameters=False, profiler=None
+            )
             # Note: At this point, the fantasy values are dropped, they are not
             # needed anymore. They've just been sampled for the posterior
             # computation. We still maintain them in self.fantasy_samples,
@@ -226,8 +247,11 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
             self.fantasy_samples = new_pending
 
     def _posterior_for_state(
-            self, state: TuningJobState, fit_parameters: bool,
-            profiler: Optional[GPMXNetSimpleProfiler]):
+        self,
+        state: TuningJobState,
+        fit_parameters: bool,
+        profiler: Optional[GPMXNetSimpleProfiler],
+    ):
         """
         Computes posterior for state.
         If fit_parameters and state.pending_evaluations is empty, we first
@@ -237,11 +261,12 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
         sampled.
 
         """
-        assert state.candidate_evaluations, \
-            "Cannot compute posterior: state has no labeled datapoints"
+        assert (
+            state.candidate_evaluations
+        ), "Cannot compute posterior: state has no labeled datapoints"
         internal_candidate_evaluations = get_internal_candidate_evaluations(
-            state, self.active_metric, self.normalize_targets,
-            self.num_fantasy_samples)
+            state, self.active_metric, self.normalize_targets, self.num_fantasy_samples
+        )
         X_all = internal_candidate_evaluations.X
         Y_all = internal_candidate_evaluations.y
         assert X_all.shape[0] == Y_all.shape[0]
@@ -259,8 +284,8 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
             self._debug_log.set_gp_params(self.get_params())
             if not state.pending_evaluations:
                 deb_msg = "[GaussProcSurrogateModel._posterior_for_state]\n"
-                deb_msg += ("- self.mean = {}\n".format(self.mean))
-                deb_msg += ("- self.std = {}".format(self.std))
+                deb_msg += "- self.mean = {}\n".format(self.mean)
+                deb_msg += "- self.std = {}".format(self.std)
                 logger.info(deb_msg)
                 self._debug_log.set_targets(internal_candidate_evaluations.y)
             else:
@@ -268,8 +293,9 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
                 fantasies = internal_candidate_evaluations.y[-num_pending:, :]
                 self._debug_log.set_fantasies(fantasies)
 
-    def _draw_fantasy_values(self, candidates: List[Candidate]) \
-            -> List[FantasizedPendingEvaluation]:
+    def _draw_fantasy_values(
+        self, candidates: List[Candidate]
+    ) -> List[FantasizedPendingEvaluation]:
         """
         Note: The fantasy values need not be de-normalized, because they are
         only used internally here (e.g., get_internal_candidate_evaluations).
@@ -286,26 +312,35 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
             if self._debug_fantasy_values is not None:
                 # DEBUG: Use provided fantasy values
                 assert len(self._debug_fantasy_values) == len(candidates)
-                logger.info("DEBUG: Use given fantasy values, rather than resampling them")
+                logger.info(
+                    "DEBUG: Use given fantasy values, rather than resampling them"
+                )
                 return self._debug_fantasy_values
 
-            logger.debug("Fantasizing target values for candidates:\n{}"
-                         .format(candidates))
+            logger.debug(
+                "Fantasizing target values for candidates:\n{}".format(candidates)
+            )
             X_new = self.state.hp_ranges.to_ndarray_matrix(candidates)
             # Special case (see header comment): If the current posterior state
             # does not contain pending candidates (no fantasies), we sample
             # num_fantasy_samples times i.i.d.
-            num_samples = 1 if self._gpmodel.multiple_targets() \
-                else self.num_fantasy_samples
+            num_samples = (
+                1 if self._gpmodel.multiple_targets() else self.num_fantasy_samples
+            )
             # We need joint sampling for >1 new candidates
             num_candidates = len(candidates)
-            sample_func = self._gpmodel.sample_joint if num_candidates > 1 else \
-                self._gpmodel.sample_marginals
+            sample_func = (
+                self._gpmodel.sample_joint
+                if num_candidates > 1
+                else self._gpmodel.sample_marginals
+            )
             Y_new = sample_func(X_new, num_samples=num_samples).reshape(
-                (num_candidates, -1))
+                (num_candidates, -1)
+            )
             return [
                 FantasizedPendingEvaluation(
-                    candidate, {self.active_metric: y_new.reshape((1, -1))})
+                    candidate, {self.active_metric: y_new.reshape((1, -1))}
+                )
                 for candidate, y_new in zip(candidates, Y_new)
             ]
         else:
@@ -315,9 +350,11 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
         hp_ranges = self.state.hp_ranges
         if isinstance(hp_ranges, HyperparameterRanges_CS):
             candidates = hp_ranges.filter_for_last_pos_value(candidates)
-            assert candidates, \
-                "state.hp_ranges does not contain any candidates " + \
-                "(labeled or pending) with resource attribute " + \
-                "'{}' = {}".format(
-                    hp_ranges.name_last_pos, hp_ranges.value_for_last_pos)
+            assert candidates, (
+                "state.hp_ranges does not contain any candidates "
+                + "(labeled or pending) with resource attribute "
+                + "'{}' = {}".format(
+                    hp_ranges.name_last_pos, hp_ranges.value_for_last_pos
+                )
+            )
         return candidates

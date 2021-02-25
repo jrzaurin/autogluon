@@ -20,21 +20,22 @@ from ..utils.pil_transforms import *
 _is_osx = platform.system() == "Darwin"
 
 __all__ = [
-    'get_dataset',
-    'get_built_in_dataset',
-    'ImageFolderDataset',
-    'RecordDataset',
-    'NativeImageFolderDataset']
+    "get_dataset",
+    "get_built_in_dataset",
+    "ImageFolderDataset",
+    "RecordDataset",
+    "NativeImageFolderDataset",
+]
 
 logger = logging.getLogger(__name__)
 
 built_in_datasets = [
-    'mnist',
-    'cifar',
-    'cifar10',
-    'cifar100',
-    'imagenet',
-    'fashionmnist',
+    "mnist",
+    "cifar",
+    "cifar10",
+    "cifar100",
+    "imagenet",
+    "fashionmnist",
 ]
 
 
@@ -60,7 +61,7 @@ def generate_transform(train, resize, _is_osx, input_size, jitter_param):
                     RandomHorizontalFlip(),
                     ColorJitter(0.4, 0.4, 0.4),
                     ToTensor(),
-                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
                 ]
             )
         else:
@@ -69,7 +70,7 @@ def generate_transform(train, resize, _is_osx, input_size, jitter_param):
                     Resize(resize),
                     CenterCrop(input_size),
                     ToTensor(),
-                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
                 ]
             )
     else:
@@ -81,11 +82,11 @@ def generate_transform(train, resize, _is_osx, input_size, jitter_param):
                     transforms.RandomColorJitter(
                         brightness=jitter_param,
                         contrast=jitter_param,
-                        saturation=jitter_param
+                        saturation=jitter_param,
                     ),
                     transforms.RandomLighting(0.1),
                     transforms.ToTensor(),
-                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
                 ]
             )
         else:
@@ -94,17 +95,25 @@ def generate_transform(train, resize, _is_osx, input_size, jitter_param):
                     transforms.Resize(resize),
                     transforms.CenterCrop(input_size),
                     transforms.ToTensor(),
-                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
                 ]
             )
     return transform
 
 
 @func()
-def get_dataset(path=None, train=True, name=None,
-                input_size=224, crop_ratio=0.875, jitter_param=0.4, scale_ratio_choice=[],
-                *args, **kwargs):
-    """ Method to produce image classification dataset for AutoGluon, can either be a
+def get_dataset(
+    path=None,
+    train=True,
+    name=None,
+    input_size=224,
+    crop_ratio=0.875,
+    jitter_param=0.4,
+    scale_ratio_choice=[],
+    *args,
+    **kwargs,
+):
+    """Method to produce image classification dataset for AutoGluon, can either be a
     :class:`ImageFolderDataset`, :class:`RecordDataset`, or a
     popular dataset already built into AutoGluon ('mnist', 'cifar10', 'cifar100', 'imagenet').
 
@@ -136,24 +145,20 @@ def get_dataset(path=None, train=True, name=None,
     transform = generate_transform(train, resize, _is_osx, input_size, jitter_param)
 
     if isinstance(name, str) and name.lower() in built_in_datasets:
-        return get_built_in_dataset(name, train=train, input_size=input_size, *args, **kwargs)
+        return get_built_in_dataset(
+            name, train=train, input_size=input_size, *args, **kwargs
+        )
 
-    if '.rec' in path:
+    if ".rec" in path:
         dataset = RecordDataset(
-            path,
-            *args,
-            transform=_TransformFirstClosure(transform),
-            **kwargs
+            path, *args, transform=_TransformFirstClosure(transform), **kwargs
         )
     elif _is_osx:
         dataset = ImageFolderDataset(path, transform=transform, *args, **kwargs)
     elif not train:
         if not scale_ratio_choice:
             dataset = TestImageFolderDataset(
-                path,
-                *args,
-                transform=_TransformFirstClosure(transform),
-                **kwargs
+                path, *args, transform=_TransformFirstClosure(transform), **kwargs
             )
         else:
             dataset = []
@@ -163,25 +168,21 @@ def get_dataset(path=None, train=True, name=None,
                     path,
                     *args,
                     transform=_TransformFirstClosure(
-                        generate_transform(train, resize, _is_osx, input_size, jitter_param)
+                        generate_transform(
+                            train, resize, _is_osx, input_size, jitter_param
+                        )
                     ),
-                    **kwargs
+                    **kwargs,
                 )
                 dataset.append(dataset_item.init())
 
-    elif 'label_file' in kwargs:
+    elif "label_file" in kwargs:
         dataset = IndexImageDataset(
-            path,
-            transform=_TransformFirstClosure(transform),
-            *args,
-            **kwargs
+            path, transform=_TransformFirstClosure(transform), *args, **kwargs
         )
     else:
         dataset = NativeImageFolderDataset(
-            path,
-            *args,
-            transform=_TransformFirstClosure(transform),
-            **kwargs
+            path, *args, transform=_TransformFirstClosure(transform), **kwargs
         )
 
     if not scale_ratio_choice:
@@ -209,8 +210,9 @@ class IndexImageDataset(MXImageFolderDataset):
         A user defined callback that transforms each sample.
     """
 
-    def __init__(self, root, label_file, gray_scale=False, transform=None,
-                 extension='.jpg'):
+    def __init__(
+        self, root, label_file, gray_scale=False, transform=None, extension=".jpg"
+    ):
         self._root = os.path.expanduser(root)
         self.items, self.synsets = self.read_csv(label_file, root, extension)
         self._flag = 0 if gray_scale else 1
@@ -227,6 +229,7 @@ class IndexImageDataset(MXImageFolderDataset):
             return label_list.index(name)
 
         import csv
+
         label_dict = {}
         with open(filename) as f:
             reader = csv.reader(f)
@@ -234,8 +237,8 @@ class IndexImageDataset(MXImageFolderDataset):
                 assert len(row) == 2
                 label_dict[row[0]] = row[1]
 
-        if 'id' in label_dict:
-            label_dict.pop('id')
+        if "id" in label_dict:
+            label_dict.pop("id")
 
         labels = list(set(label_dict.values()))
         samples = [
@@ -284,16 +287,21 @@ class RecordDataset:
         flag = 0 if gray_scale else 1
         # retrieve number of classes without decoding images
         td = RecordFileDataset(filename)
-        s = set([recordio.unpack(td.__getitem__(i))[0].label[0] for i in range(len(td))])
+        s = set(
+            [recordio.unpack(td.__getitem__(i))[0].label[0] for i in range(len(td))]
+        )
         self._num_classes = len(s)
         if not classes:
             self._classes = [str(i) for i in range(self._num_classes)]
         else:
             if len(self._num_classes) != len(classes):
-                warnings.warn('Provided class names do not match data, expected "num_class" is {} '
-                              'vs. provided: {}'.format(self._num_classes, len(classes)))
-                self._classes = list(classes) + \
-                    [str(i) for i in range(len(classes), self._num_classes)]
+                warnings.warn(
+                    'Provided class names do not match data, expected "num_class" is {} '
+                    "vs. provided: {}".format(self._num_classes, len(classes))
+                )
+                self._classes = list(classes) + [
+                    str(i) for i in range(len(classes), self._num_classes)
+                ]
         self._dataset = ImageRecordDataset(filename, flag=flag)
         if transform:
             self._dataset = self._dataset.transform_first(transform)
@@ -339,7 +347,9 @@ class TestImageFolderDataset(MXImageFolderDataset):
         self.items = []
         path = os.path.expanduser(root)
         if not os.path.isdir(path):
-            raise ValueError('Ignoring %s, which is not a directory.' % path, stacklevel=3)
+            raise ValueError(
+                "Ignoring %s, which is not a directory." % path, stacklevel=3
+            )
         for filename in sorted(os.listdir(path)):
             filename = os.path.join(path, filename)
             if os.path.isfile(filename):  # add
@@ -347,7 +357,7 @@ class TestImageFolderDataset(MXImageFolderDataset):
                 ext = os.path.splitext(filename)[1]
                 if ext.lower() not in self._exts:
                     warnings.warn(
-                        f'Ignoring {filename} of type {ext}.'
+                        f"Ignoring {filename} of type {ext}."
                         f' Only support {", ".join(self._exts)}'
                     )
                     continue
@@ -355,14 +365,16 @@ class TestImageFolderDataset(MXImageFolderDataset):
             else:
                 folder = filename
                 if not os.path.isdir(folder):
-                    raise ValueError(f'Ignoring {path}, which is not a directory.', stacklevel=3)
+                    raise ValueError(
+                        f"Ignoring {path}, which is not a directory.", stacklevel=3
+                    )
                 label = len(self.synsets)
                 for sub_filename in sorted(os.listdir(folder)):
                     sub_filename = os.path.join(folder, sub_filename)
                     ext = os.path.splitext(sub_filename)[1]
                     if ext.lower() not in self._exts:
                         warnings.warn(
-                            f'Ignoring {sub_filename} of type {ext}.'
+                            f"Ignoring {sub_filename} of type {ext}."
                             f' Only support {", ".join(self._exts)}'
                         )
                         continue
@@ -412,8 +424,19 @@ class ImageFolderDataset(object):
     imgs : list
         List of (image path, class_index) tuples
     """
+
     _repr_indent = 4
-    IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp')
+    IMG_EXTENSIONS = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".ppm",
+        ".bmp",
+        ".pgm",
+        ".tif",
+        ".tiff",
+        ".webp",
+    )
 
     def __init__(self, root, extensions=None, transform=None, is_valid_file=None):
         root = os.path.expanduser(root)
@@ -442,7 +465,9 @@ class ImageFolderDataset(object):
         images = []
         dir = os.path.expanduser(dir)
         if not ((extensions is None) ^ (is_valid_file is None)):
-            raise ValueError("Both extensions and is_valid_file cannot be None or not None at the same time")
+            raise ValueError(
+                "Both extensions and is_valid_file cannot be None or not None at the same time"
+            )
 
         if extensions is not None:
 
@@ -451,7 +476,7 @@ class ImageFolderDataset(object):
                     return False
                 valid = True
                 try:
-                    with open(x, 'rb') as f:
+                    with open(x, "rb") as f:
                         Image.open(f)
                 except OSError:
                     valid = False
@@ -478,9 +503,9 @@ class ImageFolderDataset(object):
 
     @staticmethod
     def loader(path):
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             img = Image.open(f)
-            return img.convert('RGB')
+            return img.convert("RGB")
 
     @staticmethod
     def _find_classes(dir):
@@ -500,7 +525,9 @@ class ImageFolderDataset(object):
             # Faster and available in Python 3.5 and above
             classes = [d.name for d in os.scandir(dir) if d.is_dir()]
         else:
-            classes = [d for d in os.listdir(dir) if os.path.isdir(os.path.join(dir, d))]
+            classes = [
+                d for d in os.listdir(dir) if os.path.isdir(os.path.join(dir, d))
+            ]
         classes.sort()
         class_to_idx = {classes[i]: i for i in range(len(classes))}
         return classes, class_to_idx
@@ -537,74 +564,104 @@ class ImageFolderDataset(object):
         if self.root is not None:
             body.append(f"Root location: {self.root}")
         lines = [head] + [" " * self._repr_indent + line for line in body]
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
 
-def get_built_in_dataset(name, train=True, input_size=224, batch_size=256, num_workers=32,
-                         shuffle=True, **kwargs):
-    """Returns built-in popular image classification dataset based on provided string name ('cifar10', 'cifar100','mnist','imagenet').
-    """
-    logger.info(f'get_built_in_dataset {name}')
+def get_built_in_dataset(
+    name,
+    train=True,
+    input_size=224,
+    batch_size=256,
+    num_workers=32,
+    shuffle=True,
+    **kwargs,
+):
+    """Returns built-in popular image classification dataset based on provided string name ('cifar10', 'cifar100','mnist','imagenet')."""
+    logger.info(f"get_built_in_dataset {name}")
     name = name.lower()
-    if name in ('cifar10', 'cifar'):
+    if name in ("cifar10", "cifar"):
         import gluoncv.data.transforms as gcv_transforms
+
         if train:
             transform_split = transforms.Compose(
                 [
                     gcv_transforms.RandomCrop(32, pad=4),
                     transforms.RandomFlipLeftRight(),
                     transforms.ToTensor(),
-                    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
+                    transforms.Normalize(
+                        [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
+                    ),
                 ]
             )
         else:
             transform_split = transforms.Compose(
                 [
                     transforms.ToTensor(),
-                    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
+                    transforms.Normalize(
+                        [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
+                    ),
                 ]
             )
         return gluon.data.vision.CIFAR10(train=train).transform_first(transform_split)
-    elif name == 'cifar100':
+    elif name == "cifar100":
         import gluoncv.data.transforms as gcv_transforms
+
         if train:
             transform_split = transforms.Compose(
                 [
                     gcv_transforms.RandomCrop(32, pad=4),
                     transforms.RandomFlipLeftRight(),
                     transforms.ToTensor(),
-                    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
+                    transforms.Normalize(
+                        [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
+                    ),
                 ]
             )
         else:
             transform_split = transforms.Compose(
                 [
                     transforms.ToTensor(),
-                    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
+                    transforms.Normalize(
+                        [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
+                    ),
                 ]
             )
         return gluon.data.vision.CIFAR100(train=train).transform_first(transform_split)
-    elif name == 'mnist':
+    elif name == "mnist":
+
         def transform(data, label):
-            return nd.transpose(data.astype(np.float32), (2, 0, 1)) / 255, label.astype(np.float32)
+            return nd.transpose(data.astype(np.float32), (2, 0, 1)) / 255, label.astype(
+                np.float32
+            )
 
         return gluon.data.vision.MNIST(train=train, transform=transform)
-    elif name == 'fashionmnist':
+    elif name == "fashionmnist":
+
         def transform(data, label):
-            return nd.transpose(data.astype(np.float32), (2, 0, 1)) / 255, label.astype(np.float32)
+            return nd.transpose(data.astype(np.float32), (2, 0, 1)) / 255, label.astype(
+                np.float32
+            )
 
         return gluon.data.vision.FashionMNIST(train=train, transform=transform)
-    elif name == 'imagenet':
+    elif name == "imagenet":
         # Please setup the ImageNet dataset following the tutorial from GluonCV
         if train:
-            rec_file = '/media/ramdisk/rec/train.rec'
-            rec_file_idx = '/media/ramdisk/rec/train.idx'
+            rec_file = "/media/ramdisk/rec/train.rec"
+            rec_file_idx = "/media/ramdisk/rec/train.idx"
         else:
-            rec_file = '/media/ramdisk/rec/val.rec'
-            rec_file_idx = '/media/ramdisk/rec/val.idx'
-        data_loader = get_data_rec(input_size, 0.875, rec_file, rec_file_idx,
-                                   batch_size, num_workers, train, shuffle=shuffle,
-                                   **kwargs)
+            rec_file = "/media/ramdisk/rec/val.rec"
+            rec_file_idx = "/media/ramdisk/rec/val.idx"
+        data_loader = get_data_rec(
+            input_size,
+            0.875,
+            rec_file,
+            rec_file_idx,
+            batch_size,
+            num_workers,
+            train,
+            shuffle=shuffle,
+            **kwargs,
+        )
         return data_loader
     else:
         raise NotImplementedError

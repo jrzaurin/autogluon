@@ -8,23 +8,24 @@ logger = logging.getLogger()
 
 
 _scheduler_presets = {
-    'auto': {'searcher': 'local_sequential_auto'},
+    "auto": {"searcher": "local_sequential_auto"},
     # 'grid': {'searcher': 'grid'},  # grid commented out as it isn't compatible with most default model search spaces
-    'random': {'searcher': 'random'},
-    'bayesopt': {'searcher': 'bayesopt'},
+    "random": {"searcher": "random"},
+    "bayesopt": {"searcher": "bayesopt"},
     # 'skopt': {'searcher': 'skopt'},  # TODO: Remove skopt? Is it worthwhile to keep as an option?
     # Don't include hyperband and bayesopt hyperband at present
 }
 
 
 def scheduler_factory(
-        hyperparameter_tune_kwargs,
-        time_out: float = None,
-        num_trials: int = None,
-        nthreads_per_trial='all',
-        ngpus_per_trial='all',
-        scheduler_cls='auto',
-        **kwargs):
+    hyperparameter_tune_kwargs,
+    time_out: float = None,
+    num_trials: int = None,
+    nthreads_per_trial="all",
+    ngpus_per_trial="all",
+    scheduler_cls="auto",
+    **kwargs,
+):
     """
     Constructs a scheduler via lazy initialization based on the input hyperparameter_tune_kwargs.
     The output will contain the scheduler class and init arguments except for the `train_fn` argument, which must be specified downstream.
@@ -108,11 +109,17 @@ def scheduler_factory(
     if hyperparameter_tune_kwargs is None:
         raise ValueError(f"hyperparameter_tune_kwargs cannot be None.")
     if isinstance(hyperparameter_tune_kwargs, str):
-        hyperparameter_tune_kwargs = get_hyperparameter_tune_kwargs_preset(hyperparameter_tune_kwargs)
+        hyperparameter_tune_kwargs = get_hyperparameter_tune_kwargs_preset(
+            hyperparameter_tune_kwargs
+        )
     if not isinstance(hyperparameter_tune_kwargs, dict):
-        raise ValueError(f"hyperparameter_tune_kwargs must be of type str or dict, but is type: {type(hyperparameter_tune_kwargs)}")
-    if 'searcher' not in hyperparameter_tune_kwargs:
-        raise ValueError(f"Required key 'searcher' is not present in hyperparameter_tune_kwargs: {hyperparameter_tune_kwargs}")
+        raise ValueError(
+            f"hyperparameter_tune_kwargs must be of type str or dict, but is type: {type(hyperparameter_tune_kwargs)}"
+        )
+    if "searcher" not in hyperparameter_tune_kwargs:
+        raise ValueError(
+            f"Required key 'searcher' is not present in hyperparameter_tune_kwargs: {hyperparameter_tune_kwargs}"
+        )
     if num_trials is None and time_out is not None:
         num_trials = 1000
 
@@ -125,16 +132,20 @@ def scheduler_factory(
         **kwargs,
     )
 
-    if isinstance(scheduler_cls, str) and scheduler_cls == 'auto':
-        scheduler_cls = schedulers[scheduler_params['searcher'].lower()]
+    if isinstance(scheduler_cls, str) and scheduler_cls == "auto":
+        scheduler_cls = schedulers[scheduler_params["searcher"].lower()]
     if not inspect.isclass(scheduler_cls):
-        raise ValueError(f'scheduler_cls must be a class, but was instead: {scheduler_cls}')
-    if scheduler_params['time_out'] is None:
-        scheduler_params.pop('time_out', None)
+        raise ValueError(
+            f"scheduler_cls must be a class, but was instead: {scheduler_cls}"
+        )
+    if scheduler_params["time_out"] is None:
+        scheduler_params.pop("time_out", None)
     return scheduler_cls, scheduler_params
 
 
 def get_hyperparameter_tune_kwargs_preset(preset: str):
     if preset not in _scheduler_presets:
-        raise ValueError(f'Invalid hyperparameter_tune_kwargs preset value "{preset}". Valid presets: {list(_scheduler_presets.keys())}')
+        raise ValueError(
+            f'Invalid hyperparameter_tune_kwargs preset value "{preset}". Valid presets: {list(_scheduler_presets.keys())}'
+        )
     return _scheduler_presets[preset].copy()

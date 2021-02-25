@@ -12,16 +12,18 @@ from distributed.comm.core import CommClosedError
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['DistStatusReporter',
-           'FakeReporter',
-           'DistSemaphore',
-           'Communicator',
-           'LocalStatusReporter']
+__all__ = [
+    "DistStatusReporter",
+    "FakeReporter",
+    "DistSemaphore",
+    "Communicator",
+    "LocalStatusReporter",
+]
 
 
 class FakeReporter(object):
-    """FakeReporter for internal use in final fit
-    """
+    """FakeReporter for internal use in final fit"""
+
     def __call__(self, **kwargs):
         pass
 
@@ -55,18 +57,18 @@ class DistStatusReporter(object):
         >>> reporter(accuracy=1, training_iters=4)
         """
         report_time = time.time()
-        if 'time_this_iter' not in kwargs:
-            kwargs['time_this_iter'] = report_time - self._last_report_time
+        if "time_this_iter" not in kwargs:
+            kwargs["time_this_iter"] = report_time - self._last_report_time
         self._last_report_time = report_time
 
-        logger.debug('Reporting {}'.format(json.dumps(kwargs)))
+        logger.debug("Reporting {}".format(json.dumps(kwargs)))
         try:
             self._queue.put(kwargs.copy())
         except RuntimeError:
             return
         self._continue_semaphore.acquire()
         if self._stop.get():
-            raise AutoGluonEarlyStop('Stopping!')
+            raise AutoGluonEarlyStop("Stopping!")
 
     def fetch(self, block=True):
         try:
@@ -83,8 +85,7 @@ class DistStatusReporter(object):
         self._continue_semaphore.release()
 
     def _start(self):
-        """Adjust the real starting time
-        """
+        """Adjust the real starting time"""
         self._last_report_time = time.time()
 
     def save_dict(self, **state_dict):
@@ -107,12 +108,13 @@ class MODistStatusReporter(DistStatusReporter):
     >>> def train_func(config, reporter):
     ...     reporter(accuracy=1, f_score=1, training_iters=4)
     """
+
     def __init__(self, objectives, weights, scalarization_opts, remote=None):
         super().__init__(remote)
         self.objectives = objectives
         self.weights = weights
         self.scalarization_options = scalarization_opts
-    
+
     def __call__(self, **kwargs):
         """Report updated training status.
         Pass in `done=True` when the training job is completed.
@@ -128,8 +130,10 @@ class MODistStatusReporter(DistStatusReporter):
         try:
             v = np.array([kwargs[k] for k in self.objectives])
         except KeyError:
-            raise KeyError("Reporter requires accesss to all objective values.\
-                Please ensure you return all required values.")
+            raise KeyError(
+                "Reporter requires accesss to all objective values.\
+                Please ensure you return all required values."
+            )
 
         if self.scalarization_options["algorithm"] == "random_weights":
             scalarization = max([w @ v for w in self.weights])
@@ -138,8 +142,10 @@ class MODistStatusReporter(DistStatusReporter):
             scalarization = [max(w * v) + rho * (w @ v) for w in self.weights]
             scalarization = max(scalarization)
         else:
-            raise ValueError("Specified scalarization algorithm is unknown. \
-                Valid algorithms are 'random_weights' and 'parego'.")
+            raise ValueError(
+                "Specified scalarization algorithm is unknown. \
+                Valid algorithms are 'random_weights' and 'parego'."
+            )
         kwargs["_SCALARIZATION"] = scalarization
 
         super().__call__(**kwargs)
@@ -154,9 +160,9 @@ class LocalStatusReporter(object):
     ...     reporter(timesteps_this_iter=1)
     """
 
-    def __init__(self, dict_path=None):#, result_queue, continue_semaphore):
+    def __init__(self, dict_path=None):  # , result_queue, continue_semaphore):
         self._queue = mp.Queue(1)
-        self._stop = mp.Value('i', 0)
+        self._stop = mp.Value("i", 0)
         self._last_report_time = None
         self._continue_semaphore = mp.Semaphore(0)
         self._last_report_time = time.time()
@@ -174,12 +180,12 @@ class LocalStatusReporter(object):
         >>> reporter(accuracy=1, training_iters=4)
         """
         report_time = time.time()
-        if 'time_this_iter' not in kwargs:
-            kwargs['time_this_iter'] = report_time - self._last_report_time
+        if "time_this_iter" not in kwargs:
+            kwargs["time_this_iter"] = report_time - self._last_report_time
         self._last_report_time = report_time
 
         self._queue.put(kwargs.copy(), block=True)
-        logger.debug('StatusReporter reporting: {}'.format(json.dumps(kwargs)))
+        logger.debug("StatusReporter reporting: {}".format(json.dumps(kwargs)))
 
         self._continue_semaphore.acquire()
         if self._stop.value:
@@ -197,18 +203,16 @@ class LocalStatusReporter(object):
         self._continue_semaphore.release()
 
     def _start(self):
-        """Adjust the real starting time
-        """
+        """Adjust the real starting time"""
         self._last_report_time = time.time()
 
     def save_dict(self, **state_dict):
-        """Save the serializable state_dict
-        """
-        logger.debug('Saving the task dict to {}'.format(self.dict_path))
+        """Save the serializable state_dict"""
+        logger.debug("Saving the task dict to {}".format(self.dict_path))
         save(state_dict, self.dict_path)
 
     def has_dict(self):
-        logger.debug('has_dict {}'.format(os.path.isfile(self.dict_path)))
+        logger.debug("has_dict {}".format(os.path.isfile(self.dict_path)))
         return os.path.isfile(self.dict_path)
 
     def get_dict(self):
@@ -252,7 +256,7 @@ class Communicator(threading.Thread):
             except AutoGluonEarlyStop:
                 self.local_reporter.terminate()
 
-            if reported_result.get('done', False):
+            if reported_result.get("done", False):
                 self.process.join()
                 break
 

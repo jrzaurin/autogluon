@@ -6,20 +6,19 @@ from collections import OrderedDict
 import autograd.numpy as anp
 from autograd.builtins import isinstance
 
-__all__ = ['Block',
-           'Parameter',
-           'ParameterDict']
+__all__ = ["Block", "Parameter", "ParameterDict"]
+
 
 def _indent(s_, numSpaces):
-    """Indent string
-    """
-    s = s_.split('\n')
+    """Indent string"""
+    s = s_.split("\n")
     if len(s) == 1:
         return s_
     first = s.pop(0)
-    s = [first] + [(numSpaces * ' ') + line for line in s]
-    s = '\n'.join(s)
+    s = [first] + [(numSpaces * " ") + line for line in s]
+    s = "\n".join(s)
     return s
+
 
 def shape_is_known(shape):
     """Check whether a shape is completely known with or without np semantics.
@@ -33,8 +32,11 @@ def shape_is_known(shape):
     for dim_size in shape:
         if dim_size == unknown_dim_size:
             return False
-        assert dim_size > unknown_dim_size, "shape dimension size cannot be less than {}, while " \
-                                            "received {}".format(unknown_dim_size, dim_size)
+        assert (
+            dim_size > unknown_dim_size
+        ), "shape dimension size cannot be less than {}, while " "received {}".format(
+            unknown_dim_size, dim_size
+        )
     return True
 
 
@@ -90,9 +92,21 @@ class Parameter(object):
     wd_mult : float
         Local weight decay multiplier for this Parameter.
     """
-    def __init__(self, name, grad_req='write', shape=None, dtype=anp.float64,
-                 lr_mult=1.0, wd_mult=1.0, init=None, allow_deferred_init=False,
-                 differentiable=True, stype='default', grad_stype='default'):
+
+    def __init__(
+        self,
+        name,
+        grad_req="write",
+        shape=None,
+        dtype=anp.float64,
+        lr_mult=1.0,
+        wd_mult=1.0,
+        init=None,
+        allow_deferred_init=False,
+        differentiable=True,
+        stype="default",
+        grad_stype="default",
+    ):
         self._var = None
         self._data = None
         self._grad = None
@@ -102,7 +116,9 @@ class Parameter(object):
         self._deferred_init = ()
         self._differentiable = differentiable
         if allow_deferred_init:
-            raise NotImplementedError('allow_deferred_init is not a valid option in autograd')
+            raise NotImplementedError(
+                "allow_deferred_init is not a valid option in autograd"
+            )
         self._allow_deferred_init = allow_deferred_init
         self._grad_req = None
         if isinstance(shape, int):
@@ -115,16 +131,21 @@ class Parameter(object):
         self.grad_req = grad_req
         self.init = init
         # sparse related storage type information
-        valid_stypes = ['default']
-        assert grad_stype in valid_stypes, "grad_stype for Parameter '%s' must be " \
-            "one of 'default', 'row_sparse', or 'csr', but got '%s'" % (name, grad_stype)
-        assert stype in valid_stypes, "stype for Parameter '%s' must be " \
+        valid_stypes = ["default"]
+        assert grad_stype in valid_stypes, (
+            "grad_stype for Parameter '%s' must be "
+            "one of 'default', 'row_sparse', or 'csr', but got '%s'"
+            % (name, grad_stype)
+        )
+        assert stype in valid_stypes, (
+            "stype for Parameter '%s' must be "
             "one of 'default', 'row_sparse', or 'csr', but got '%s'" % (name, stype)
+        )
         self._grad_stype = grad_stype
         self._stype = stype
 
     def __repr__(self):
-        s = 'Parameter {name} (shape={shape}, dtype={dtype})'
+        s = "Parameter {name} (shape={shape}, dtype={dtype})"
         return s.format(name=self.name, shape=self.shape, dtype=self.dtype)
 
     @property
@@ -133,14 +154,15 @@ class Parameter(object):
 
     @grad_req.setter
     def grad_req(self, req):
-        assert req in ['write', 'add', 'null'], \
-            "grad_req must be one of 'write', 'add', or 'null', but got '%s'"%req
+        assert req in ["write", "add", "null"], (
+            "grad_req must be one of 'write', 'add', or 'null', but got '%s'" % req
+        )
         if not self._differentiable:
-            req = 'null'
+            req = "null"
         if self._grad_req == req:
             return
         self._grad_req = req
-        if req == 'null' and self._grad is not None:
+        if req == "null" and self._grad is not None:
             self._grad = None
             self._data = [i.detach() for i in self._data]
         elif self._data is not None:
@@ -177,10 +199,12 @@ class Parameter(object):
             self._shape = new_shape
             return
 
-        assert len(self._shape) == len(new_shape) and \
-            all(j in (-1, 0, i) for i, j in zip(new_shape, self._shape)), \
-            "Expected shape %s is incompatible with given shape %s."%(
-                str(new_shape), str(self._shape))  # -1 means unknown dim size in np_shape mode
+        assert len(self._shape) == len(new_shape) and all(
+            j in (-1, 0, i) for i, j in zip(new_shape, self._shape)
+        ), "Expected shape %s is incompatible with given shape %s." % (
+            str(new_shape),
+            str(self._shape),
+        )  # -1 means unknown dim size in np_shape mode
 
         self._shape = new_shape
 
@@ -193,23 +217,25 @@ class Parameter(object):
                     return arr_list[0]
                 else:
                     ctx = context.current_context()
-            ctx_list = self._ctx_map[ctx.device_typeid&1]
+            ctx_list = self._ctx_map[ctx.device_typeid & 1]
             if ctx.device_id < len(ctx_list):
                 idx = ctx_list[ctx.device_id]
                 if idx is not None:
                     return arr_list[idx]
             raise RuntimeError(
                 "Parameter '%s' was not initialized on context %s. "
-                "It was only initialized on %s."%(
-                    self.name, str(ctx), str(self._ctx_list)))
+                "It was only initialized on %s."
+                % (self.name, str(ctx), str(self._ctx_list))
+            )
         if self._deferred_init:
-            raise NotImplementedError('Cannot enable deferred init')
+            raise NotImplementedError("Cannot enable deferred init")
         raise RuntimeError(
-            "Parameter '%s' has not been initialized. Note that " \
-            "you should initialize parameters and create Trainer " \
-            "with Block.collect_params() instead of Block.params " \
-            "because the later does not include Parameters of " \
-            "nested child Blocks"%(self.name))
+            "Parameter '%s' has not been initialized. Note that "
+            "you should initialize parameters and create Trainer "
+            "with Block.collect_params() instead of Block.params "
+            "because the later does not include Parameters of "
+            "nested child Blocks" % (self.name)
+        )
 
     def _init_impl(self, data, ctx_list=None):
         """Sets data and grad."""
@@ -218,21 +244,22 @@ class Parameter(object):
 
     def _init_grad(self):
         """Initialize grad buffers."""
-        if self.grad_req == 'null':
+        if self.grad_req == "null":
             self._grad = None
             return
 
-        if self._grad_stype != 'default':
-            raise ValueError("numpy.zeros does not support stype = {}"
-                             .format(self._grad_stype))
-        self._grad = [anp.zeros(shape=i.shape, dtype=i.dtype)
-                      for i in self._data]
+        if self._grad_stype != "default":
+            raise ValueError(
+                "numpy.zeros does not support stype = {}".format(self._grad_stype)
+            )
+        self._grad = [anp.zeros(shape=i.shape, dtype=i.dtype) for i in self._data]
 
         # autograd.mark_variables(self._check_and_get(self._data, list),
         #                         self._grad, self.grad_req)
 
-    def initialize(self, init=None, ctx=None, default_init=anp.random.uniform,
-                   force_reinit=False):
+    def initialize(
+        self, init=None, ctx=None, default_init=anp.random.uniform, force_reinit=False
+    ):
         """Initializes parameter and gradient arrays. Only used for :py:class:`NDArray` API.
         Parameters
         ----------
@@ -273,9 +300,11 @@ class Parameter(object):
         <NDArray 2x2 @gpu(1)>
         """
         if self._data is not None and not force_reinit:
-            warnings.warn("Parameter '%s' is already initialized, ignoring. " \
-                          "Set force_reinit=True to re-initialize."%self.name,
-                          stacklevel=2)
+            warnings.warn(
+                "Parameter '%s' is already initialized, ignoring. "
+                "Set force_reinit=True to re-initialize." % self.name,
+                stacklevel=2,
+            )
             return
         self._data = self._grad = None
 
@@ -283,10 +312,12 @@ class Parameter(object):
             init = default_init if self.init is None else self.init
         if not shape_is_known(self.shape):
             if self._allow_deferred_init:
-                raise NotImplementedError('deferred_init not implemented for autograd')
+                raise NotImplementedError("deferred_init not implemented for autograd")
                 return
-            raise ValueError("Cannot initialize Parameter '%s' because it has " \
-                             "invalid shape: %s."%(self.name, str(self.shape)))
+            raise ValueError(
+                "Cannot initialize Parameter '%s' because it has "
+                "invalid shape: %s." % (self.name, str(self.shape))
+            )
 
         try:
             data = init(shape=self.shape)
@@ -309,15 +340,16 @@ class Parameter(object):
         self.shape = data.shape
 
         if self._data is None:
-            assert self._deferred_init, \
-                "Parameter '%s' has not been initialized"%self.name
+            assert self._deferred_init, (
+                "Parameter '%s' has not been initialized" % self.name
+            )
             self._deferred_init = self._deferred_init[:3] + (data,)
             return
-        
+
         # self._check_and_get(self._data, list)
         # added, raise no initialization error
-#       for arr in self._check_and_get(self._data, list):
-#           arr[:] = data
+        #       for arr in self._check_and_get(self._data, list):
+        #           arr[:] = data
         for i in range(len(self._data)):
             self._data[i] = anp.array(data, copy=True)
 
@@ -333,10 +365,12 @@ class Parameter(object):
         -------
         NDArray on ctx
         """
-        if self._stype != 'default':
-            raise RuntimeError("Cannot return a copy of Parameter '%s' on ctx %s via data() " \
-                               "because its storage type is %s. Please use row_sparse_data() " \
-                               "instead." % (self.name, str(ctx), self._stype))
+        if self._stype != "default":
+            raise RuntimeError(
+                "Cannot return a copy of Parameter '%s' on ctx %s via data() "
+                "because its storage type is %s. Please use row_sparse_data() "
+                "instead." % (self.name, str(ctx), self._stype)
+            )
         return self._check_and_get(self._data, ctx)
 
     def list_data(self):
@@ -347,10 +381,12 @@ class Parameter(object):
         -------
         list of NDArrays
         """
-        if self._stype != 'default':
-            raise RuntimeError("Cannot return copies of Parameter '%s' on all contexts via " \
-                               "list_data() because its storage type is %s. Please use " \
-                               "row_sparse_data() instead." % (self.name, self._stype))
+        if self._stype != "default":
+            raise RuntimeError(
+                "Cannot return copies of Parameter '%s' on all contexts via "
+                "list_data() because its storage type is %s. Please use "
+                "row_sparse_data() instead." % (self.name, self._stype)
+            )
         return self._check_and_get(self._data, list)
 
     def grad(self, ctx=None):
@@ -362,8 +398,9 @@ class Parameter(object):
         """
         if self._data is not None and self._grad is None:
             raise RuntimeError(
-                "Cannot get gradient array for Parameter '%s' " \
-                "because grad_req='null'"%(self.name))
+                "Cannot get gradient array for Parameter '%s' "
+                "because grad_req='null'" % (self.name)
+            )
         return self._check_and_get(self._grad, ctx)
 
     def list_grad(self):
@@ -371,8 +408,9 @@ class Parameter(object):
         as :py:meth:`values`."""
         if self._data is not None and self._grad is None:
             raise RuntimeError(
-                "Cannot get gradient array for Parameter '%s' " \
-                "because grad_req='null'"%(self.name))
+                "Cannot get gradient array for Parameter '%s' "
+                "because grad_req='null'" % (self.name)
+            )
         return self._check_and_get(self._grad, list)
 
     def list_ctx(self):
@@ -380,7 +418,7 @@ class Parameter(object):
         if self._data is None:
             if self._deferred_init:
                 return self._deferred_init[1]
-            raise RuntimeError("Parameter '%s' has not been initialized"%self.name)
+            raise RuntimeError("Parameter '%s' has not been initialized" % self.name)
         return self._ctx_list
 
     def zero_grad(self):
@@ -419,17 +457,19 @@ class ParameterDict(object):
         first try to retrieve it from "shared" dict. Usually used for sharing
         parameters with another Block.
     """
-    def __init__(self, prefix='', shared=None):
+
+    def __init__(self, prefix="", shared=None):
         self._prefix = prefix
         self._params = OrderedDict()
         self._shared = shared
 
     def __repr__(self):
-        s = '{name}(\n{content}\n)'
-        name = self._prefix+' ' if self._prefix else ''
-        return s.format(name=name,
-                        content='\n'.join([_indent('  {0}'.format(v), 2)
-                                           for v in self.values()]))
+        s = "{name}(\n{content}\n)"
+        name = self._prefix + " " if self._prefix else ""
+        return s.format(
+            name=name,
+            content="\n".join([_indent("  {0}".format(v), 2) for v in self.values()]),
+        )
 
     def __getitem__(self, key):
         return self._params[key]
@@ -479,14 +519,14 @@ class ParameterDict(object):
         """
         name = self.prefix + name
         param = self._get_impl(name)
-        if param is None: # pylint: disable=too-many-nested-blocks
+        if param is None:  # pylint: disable=too-many-nested-blocks
             param = Parameter(name, **kwargs)
             self._params[name] = param
         else:
             for k, v in kwargs.items():
                 if hasattr(param, k) and getattr(param, k) is not None:
                     existing = getattr(param, k)
-                    if k == 'shape' and len(v) == len(existing):
+                    if k == "shape" and len(v) == len(existing):
                         inferred_shape = []
                         matched = True
                         for dim1, dim2 in zip(v, existing):
@@ -495,7 +535,10 @@ class ParameterDict(object):
                                 break
                             elif dim1 == dim2:
                                 inferred_shape.append(dim1)
-                            elif dim1 in (0, -1):  # -1 means unknown dim size in np_shape mode
+                            elif dim1 in (
+                                0,
+                                -1,
+                            ):  # -1 means unknown dim size in np_shape mode
                                 inferred_shape.append(dim2)
                             else:
                                 inferred_shape.append(dim1)
@@ -503,14 +546,15 @@ class ParameterDict(object):
                         if matched:
                             param._shape = tuple(inferred_shape)
                             continue
-                    elif k == 'dtype' and anp.dtype(v) == anp.dtype(existing):
+                    elif k == "dtype" and anp.dtype(v) == anp.dtype(existing):
                         continue
 
-                    assert v is None or v == existing, \
-                        "Cannot retrieve Parameter '%s' because desired attribute " \
-                        "does not match with stored for attribute '%s': " \
-                        "desired '%s' vs stored '%s'."%(
-                            name, k, str(v), str(getattr(param, k)))
+                    assert v is None or v == existing, (
+                        "Cannot retrieve Parameter '%s' because desired attribute "
+                        "does not match with stored for attribute '%s': "
+                        "desired '%s' vs stored '%s'."
+                        % (name, k, str(v), str(getattr(param, k)))
+                    )
                 else:
                     setattr(param, k, v)
         return param
@@ -519,15 +563,17 @@ class ParameterDict(object):
         """Copies all Parameters in ``other`` to self."""
         for k, v in other.items():
             if k in self._params:
-                assert self._params[k] is v, \
-                    "Cannot update self with other because they have different " \
-                    "Parameters with the same name '%s'"%k
+                assert self._params[k] is v, (
+                    "Cannot update self with other because they have different "
+                    "Parameters with the same name '%s'" % k
+                )
 
         for k, v in other.items():
             self._params[k] = v
 
-    def initialize(self, init=anp.random.uniform, ctx=None, verbose=False,
-                   force_reinit=False):
+    def initialize(
+        self, init=anp.random.uniform, ctx=None, verbose=False, force_reinit=False
+    ):
         """Initializes all Parameters managed by this dictionary to be used for :py:class:`NDArray`
         API. It has no effect when using :py:class:`Symbol` API.
         Parameters
@@ -588,6 +634,7 @@ class NameManager(object):
     """NameManager to do automatic naming.
     Developers can also inherit from this class to change naming behavior.
     """
+
     _current = threading.local()
 
     def __init__(self):
@@ -616,7 +663,7 @@ class NameManager(object):
             return name
         if hint not in self._counter:
             self._counter[hint] = 0
-        name = '%s%d' % (hint, self._counter[hint])
+        name = "%s%d" % (hint, self._counter[hint])
         self._counter[hint] += 1
         return name
 
@@ -631,6 +678,7 @@ class NameManager(object):
         assert self._old_manager
         NameManager._current.value = self._old_manager
 
+
 class Prefix(NameManager):
     """A name manager that attaches a prefix to all names.
     Examples
@@ -642,6 +690,7 @@ class Prefix(NameManager):
     >>> net.list_arguments()
     ['data', 'mynet_fc1_weight', 'mynet_fc1_bias']
     """
+
     def __init__(self, prefix):
         super(Prefix, self).__init__()
         self._prefix = prefix
@@ -650,12 +699,14 @@ class Prefix(NameManager):
         name = super(Prefix, self).get(name, hint)
         return self._prefix + name
 
+
 # initialize the default name manager
 NameManager._current.value = NameManager()
 
 
 class _BlockScope(object):
     """Scope for collecting child `Block` s."""
+
     _current = threading.local()
 
     def __init__(self, block):
@@ -672,7 +723,7 @@ class _BlockScope(object):
             if prefix is None:
                 if not hasattr(NameManager._current, "value"):
                     NameManager._current.value = NameManager()
-                prefix = NameManager._current.value.get(None, hint) + '_'
+                prefix = NameManager._current.value.get(None, hint) + "_"
             if params is None:
                 params = ParameterDict(prefix)
             else:
@@ -681,14 +732,14 @@ class _BlockScope(object):
 
         if prefix is None:
             count = current._counter.get(hint, 0)
-            prefix = '%s%d_'%(hint, count)
+            prefix = "%s%d_" % (hint, count)
             current._counter[hint] = count + 1
         if params is None:
             parent = current._block.params
-            params = ParameterDict(parent.prefix+prefix, parent._shared)
+            params = ParameterDict(parent.prefix + prefix, parent._shared)
         else:
             params = ParameterDict(params.prefix, params)
-        return current._block.prefix+prefix, params
+        return current._block.prefix + prefix, params
 
     def __enter__(self):
         if self._block._empty_prefix:
@@ -744,10 +795,11 @@ class Block(object):
             dense0 = nn.Dense(20)
             dense1 = nn.Dense(20, params=dense0.collect_params())
     """
+
     def __init__(self, prefix=None, params=None):
-        self._empty_prefix = prefix == ''
+        self._empty_prefix = prefix == ""
         self._prefix, self._params = _BlockScope.create(prefix, params, self._alias())
-        self._name = self._prefix[:-1] if self._prefix.endswith('_') else self._prefix
+        self._name = self._prefix[:-1] if self._prefix.endswith("_") else self._prefix
         self._scope = _BlockScope(self)
         self._children = OrderedDict()
         self._reg_params = {}
@@ -755,10 +807,14 @@ class Block(object):
         self._forward_pre_hooks = OrderedDict()
 
     def __repr__(self):
-        s = '{name}(\n{modstr}\n)'
-        modstr = '\n'.join(['  ({key}): {block}'.format(key=key,
-                                                        block=_indent(block.__repr__(), 2))
-                            for key, block in self.__dict__.items() if isinstance(block, Block)])
+        s = "{name}(\n{modstr}\n)"
+        modstr = "\n".join(
+            [
+                "  ({key}): {block}".format(key=key, block=_indent(block.__repr__(), 2))
+                for key, block in self.__dict__.items()
+                if isinstance(block, Block)
+            ]
+        )
         return s.format(name=self.__class__.__name__, modstr=modstr)
 
     def __setattr__(self, name, value):
@@ -766,24 +822,31 @@ class Block(object):
 
         if hasattr(self, name):
             existing = getattr(self, name)
-            if isinstance(existing, (Parameter, Block)) and not isinstance(value, type(existing)):
-                raise TypeError('Changing attribute type for {name} from {type1} to {type2}' \
-                                'is not allowed.'.format(
-                                    name=name, type1=type(existing), type2=type(value)))
+            if isinstance(existing, (Parameter, Block)) and not isinstance(
+                value, type(existing)
+            ):
+                raise TypeError(
+                    "Changing attribute type for {name} from {type1} to {type2}"
+                    "is not allowed.".format(
+                        name=name, type1=type(existing), type2=type(value)
+                    )
+                )
 
         if isinstance(value, Block):
             self.register_child(value, name)
         elif isinstance(value, Parameter):
-            assert name not in self._reg_params, \
-                "Overriding Parameter attribute %s is not allowed. " \
-                "If you want to share parameters between blocks, please set " \
+            assert name not in self._reg_params, (
+                "Overriding Parameter attribute %s is not allowed. "
+                "If you want to share parameters between blocks, please set "
                 "'params' at Block construction instead."
+            )
             self._reg_params[name] = value
 
         super(Block, self).__setattr__(name, value)
 
     def _check_container_with_block(self):
         children = set(self._children.values())
+
         def _find_unregistered_block_in_container(data):
             # Find whether a nested container structure contains Blocks
             if isinstance(data, (list, tuple)):
@@ -800,15 +863,22 @@ class Block(object):
                 return not data in children
             else:
                 return False
+
         for k, v in self.__dict__.items():
-            if isinstance(v, (list, tuple, dict)) and not (k.startswith('__') or k == '_children'):
+            if isinstance(v, (list, tuple, dict)) and not (
+                k.startswith("__") or k == "_children"
+            ):
                 if _find_unregistered_block_in_container(v):
-                    warnings.warn('"{name}" is an unregistered container with Blocks. '
-                                  'Note that Blocks inside the list, tuple or dict will not be '
-                                  'registered automatically. Make sure to register them using '
-                                  'register_child() or switching to '
-                                  'nn.Sequential/nn.HybridSequential instead. '
-                                  .format(name=self.__class__.__name__ + "." + k), stacklevel=3)
+                    warnings.warn(
+                        '"{name}" is an unregistered container with Blocks. '
+                        "Note that Blocks inside the list, tuple or dict will not be "
+                        "registered automatically. Make sure to register them using "
+                        "register_child() or switching to "
+                        "nn.Sequential/nn.HybridSequential instead. ".format(
+                            name=self.__class__.__name__ + "." + k
+                        ),
+                        stacklevel=3,
+                    )
 
     def _alias(self):
         return self.__class__.__name__.lower()
@@ -865,15 +935,21 @@ class Block(object):
             ret.update(self.params)
         else:
             pattern = re.compile(select)
-            ret.update({name:value for name, value in self.params.items() if pattern.match(name)})
+            ret.update(
+                {
+                    name: value
+                    for name, value in self.params.items()
+                    if pattern.match(name)
+                }
+            )
         for cld in self._children.values():
             ret.update(cld.collect_params(select=select))
         return ret
 
-    def _collect_params_with_prefix(self, prefix=''):
+    def _collect_params_with_prefix(self, prefix=""):
         if prefix:
-            prefix += '.'
-        ret = {prefix + key : val for key, val in self._reg_params.items()}
+            prefix += "."
+        ret = {prefix + key: val for key, val in self._reg_params.items()}
         for name, child in self._children.items():
             ret.update(child._collect_params_with_prefix(prefix + name))
         return ret
@@ -932,8 +1008,9 @@ class Block(object):
         fn(self)
         return self
 
-    def initialize(self, init=anp.random.uniform, ctx=None, verbose=False,
-                   force_reinit=False):
+    def initialize(
+        self, init=anp.random.uniform, ctx=None, verbose=False, force_reinit=False
+    ):
         """Initializes :py:class:`Parameter` s of this :py:class:`Block` and its children.
         Equivalent to ``block.collect_params().initialize(...)``
         Parameters
@@ -951,8 +1028,7 @@ class Block(object):
         self.collect_params().initialize(init, ctx, verbose, force_reinit)
 
     def hybridize(self, active=True, **kwargs):
-        """ Please refer description of HybridBlock hybridize().
-        """
+        """Please refer description of HybridBlock hybridize()."""
         for cld in self._children.values():
             cld.hybridize(active, **kwargs)
 

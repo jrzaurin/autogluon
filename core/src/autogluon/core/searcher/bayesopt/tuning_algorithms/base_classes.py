@@ -18,6 +18,7 @@ class CandidateGenerator(ABC):
     Class to generate candidates from which to start the local minimization, typically random candidate
     or some form of more uniformly spaced variation, such as latin hypercube or sobol sequence
     """
+
     @abstractmethod
     def generate_candidates(self) -> Iterator[Candidate]:
         pass
@@ -27,8 +28,7 @@ class CandidateGenerator(ABC):
 
 
 class SurrogateModel(ABC):
-    def __init__(self, state: TuningJobState, active_metric: str,
-                 random_seed: int):
+    def __init__(self, state: TuningJobState, active_metric: str, random_seed: int):
         self.state = state
         self.random_seed = random_seed
         self.active_metric = active_metric
@@ -45,7 +45,7 @@ class SurrogateModel(ABC):
 
         :return:
         """
-        return {'mean', 'std'}
+        return {"mean", "std"}
 
     @abstractmethod
     def predict(self, inputs: np.ndarray) -> List[Dict[str, np.ndarray]]:
@@ -65,8 +65,9 @@ class SurrogateModel(ABC):
         """
         pass
 
-    def predict_candidates(self, candidates: Iterable[Candidate]) -> \
-            List[Dict[str, np.ndarray]]:
+    def predict_candidates(
+        self, candidates: Iterable[Candidate]
+    ) -> List[Dict[str, np.ndarray]]:
         """
         Convenience variant of 'predict', where the input is a list of n
         candidates, which are encoded to input points here.
@@ -95,8 +96,8 @@ class SurrogateModel(ABC):
 
     @abstractmethod
     def backward_gradient(
-            self, input: np.ndarray,
-            head_gradients: List[Dict[str, np.ndarray]]) -> List[np.ndarray]:
+        self, input: np.ndarray, head_gradients: List[Dict[str, np.ndarray]]
+    ) -> List[np.ndarray]:
         """
         Computes the gradient nabla_x f of an acquisition function f(x),
         where x is a single input point. This is using reverse mode
@@ -123,9 +124,11 @@ class ScoringFunction(ABC):
 
     NOTE: it will be minimized, i.e. lower is better
     """
+
     @abstractmethod
-    def score(self, candidates: Iterable[Candidate],
-              model: Optional[SurrogateModel] = None) -> List[float]:
+    def score(
+        self, candidates: Iterable[Candidate], model: Optional[SurrogateModel] = None
+    ) -> List[float]:
         """
         Requires multiple candidates, is this can be much quicker: we can use matrix operations
 
@@ -140,8 +143,9 @@ class AcquisitionFunction(ScoringFunction):
         self.model = model
 
     @abstractmethod
-    def compute_acq(self, inputs: np.ndarray,
-                    model: Optional[SurrogateModel] = None) -> np.ndarray:
+    def compute_acq(
+        self, inputs: np.ndarray, model: Optional[SurrogateModel] = None
+    ) -> np.ndarray:
         """
         Note: If inputs has shape (d,), it is taken to be (1, d)
 
@@ -153,9 +157,8 @@ class AcquisitionFunction(ScoringFunction):
 
     @abstractmethod
     def compute_acq_with_gradient(
-            self, input: np.ndarray,
-            model: Optional[SurrogateModel] = None) -> \
-            Tuple[float, np.ndarray]:
+        self, input: np.ndarray, model: Optional[SurrogateModel] = None
+    ) -> Tuple[float, np.ndarray]:
         """
         For a single input point x, compute acquisition function value f(x)
         and gradient nabla_x f.
@@ -166,8 +169,9 @@ class AcquisitionFunction(ScoringFunction):
         """
         pass
 
-    def score(self, candidates: Iterable[Candidate],
-              model: Optional[SurrogateModel] = None) -> List[float]:
+    def score(
+        self, candidates: Iterable[Candidate], model: Optional[SurrogateModel] = None
+    ) -> List[float]:
         if model is None:
             model = self.model
         inputs = model.state.hp_ranges.to_ndarray_matrix(candidates)
@@ -180,15 +184,21 @@ class LocalOptimizer(ABC):
     optimization method such as lbfgs. It would normally encapsulate an acquisition function and model
 
     """
-    def __init__(self, state: TuningJobState, model: SurrogateModel,
-                 acquisition_function_class: Type[AcquisitionFunction]):
+
+    def __init__(
+        self,
+        state: TuningJobState,
+        model: SurrogateModel,
+        acquisition_function_class: Type[AcquisitionFunction],
+    ):
         self.state = state
         self.model = model
         self.acquisition_function_class = acquisition_function_class
 
     @abstractmethod
-    def optimize(self, candidate: Candidate,
-                 model: Optional[SurrogateModel] = None) -> Candidate:
+    def optimize(
+        self, candidate: Candidate, model: Optional[SurrogateModel] = None
+    ) -> Candidate:
         """
         Run local optimization, starting from candidate.
         If model is given, it overrides self.model.
@@ -208,6 +218,7 @@ class PendingCandidateStateTransformer(ABC):
     has to be added to the state.
 
     """
+
     @abstractmethod
     def append_candidate(self, candidate: Candidate):
         """

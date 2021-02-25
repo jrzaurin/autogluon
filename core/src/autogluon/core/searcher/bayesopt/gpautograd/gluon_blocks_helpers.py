@@ -7,14 +7,17 @@ from autograd.tracer import getval
 from .constants import DATA_TYPE
 from .gluon import Parameter, Block
 
-__all__ = ['ConstantPositiveVector',
-           'PositiveScalarEncoding',
-           'IdentityScalarEncoding',
-           'LogarithmScalarEncoding',
-           'unwrap_parameter',
-           'encode_unwrap_parameter']
+__all__ = [
+    "ConstantPositiveVector",
+    "PositiveScalarEncoding",
+    "IdentityScalarEncoding",
+    "LogarithmScalarEncoding",
+    "unwrap_parameter",
+    "encode_unwrap_parameter",
+]
 
 # === Internal ===
+
 
 def unwrap_parameter(param_internal, some_arg=None):
     assert isinstance(param_internal, Parameter)
@@ -46,12 +49,12 @@ class ScalarEncodingBase(object):
     is used in 'set'. Use 'IdentityScalarEncoding' for no encoding (identity).
     NOTE: enc (and dec) must be strictly increasing.
 
-    Box constraints are given by 
-    constr_lower_int < constr_upper_int. 
-    
+    Box constraints are given by
+    constr_lower_int < constr_upper_int.
+
     Here, None means no constraint. The constraints apply to param_internal. If both
     are None, param_internal is unconstrained (default).
-    
+
     NOTE: Box constraints are just maintained here, they have to be enforced
     by an optimizer!
 
@@ -65,28 +68,33 @@ class ScalarEncodingBase(object):
     - Optimizer supports box constaints [constr_lower, constr_upper]:
       Use IdentityScalarEncoding(constr_lower, constr_upper)
     """
+
     def __init__(
-            self, init_val, constr_lower=None, constr_upper=None,
-            regularizer=None, dimension=1):
-        
+        self,
+        init_val,
+        constr_lower=None,
+        constr_upper=None,
+        regularizer=None,
+        dimension=1,
+    ):
+
         if constr_lower is not None and constr_upper is not None:
             assert constr_lower < constr_upper
-        init_val = self._check_or_set_init_val(
-            init_val, constr_lower, constr_upper)
-        init_val_int = self.decode(init_val, 'init_val')
-        
+        init_val = self._check_or_set_init_val(init_val, constr_lower, constr_upper)
+        init_val_int = self.decode(init_val, "init_val")
+
         if constr_lower is not None:
             assert init_val >= constr_lower
-            constr_lower_int = self.decode(constr_lower, 'constr_lower')
+            constr_lower_int = self.decode(constr_lower, "constr_lower")
         else:
             constr_lower_int = None
-            
+
         if constr_upper is not None:
             assert init_val <= constr_upper
-            constr_upper_int = self.decode(constr_upper, 'constr_upper')
+            constr_upper_int = self.decode(constr_upper, "constr_upper")
         else:
             constr_upper_int = None
-            
+
         self.constraints = (constr_lower, constr_upper)
         self.constraints_internal = (constr_lower_int, constr_upper_int)
         self.init_val_int = init_val_int
@@ -103,11 +111,11 @@ class ScalarEncodingBase(object):
         if isinstance(param_val, (list, np.ndarray)):
             assert len(param_val) == self.dimension
             assert np.array(param_val).ndim == 1
-            val_int_list = [self.decode(val, 'param_val') for val in param_val]
+            val_int_list = [self.decode(val, "param_val") for val in param_val]
         else:
             assert np.isscalar(param_val) is True
-            val_int_list = [self.decode(param_val, 'param_val')] * self.dimension
-            
+            val_int_list = [self.decode(param_val, "param_val")] * self.dimension
+
         param_internal.set_data(anp.array(val_int_list))
 
     def decode(self, val, name):
@@ -123,7 +131,7 @@ class ScalarEncodingBase(object):
 
     @staticmethod
     def _check_or_set_init_val(init_val, constr_lower, constr_upper):
-    # Check constraints and init value
+        # Check constraints and init value
         if init_val is not None:
             if constr_upper is not None:
                 assert init_val <= constr_upper
@@ -156,12 +164,22 @@ class IdentityScalarEncoding(ScalarEncodingBase):
     This does not ensure that param is positive! Use this only if positivity
     is otherwise guaranteed.
     """
+
     def __init__(
-            self, constr_lower=None, constr_upper=None, init_val=None,
-            regularizer=None, dimension=1):
+        self,
+        constr_lower=None,
+        constr_upper=None,
+        init_val=None,
+        regularizer=None,
+        dimension=1,
+    ):
         super(IdentityScalarEncoding, self).__init__(
-            init_val, constr_lower=constr_lower, constr_upper=constr_upper,
-            regularizer=regularizer, dimension=dimension)
+            init_val,
+            constr_lower=constr_lower,
+            constr_upper=constr_upper,
+            regularizer=regularizer,
+            dimension=dimension,
+        )
 
     def get(self, param_internal):
         return param_internal
@@ -180,21 +198,31 @@ class LogarithmScalarEncoding(ScalarEncodingBase):
         param = exp(param_internal)
         param_internal = param
     """
+
     def __init__(
-            self, constr_lower=None, constr_upper=None, init_val=None,
-            regularizer=None, dimension=1):
+        self,
+        constr_lower=None,
+        constr_upper=None,
+        init_val=None,
+        regularizer=None,
+        dimension=1,
+    ):
         super(LogarithmScalarEncoding, self).__init__(
-            init_val, constr_lower=constr_lower, constr_upper=constr_upper,
-            regularizer=regularizer, dimension=dimension)
+            init_val,
+            constr_lower=constr_lower,
+            constr_upper=constr_upper,
+            regularizer=regularizer,
+            dimension=dimension,
+        )
 
     def get(self, param_internal):
         return anp.exp(param_internal)
 
     def decode(self, val, name):
-        assert val > 0.0, '{} = {} must be positive'.format(name, val)
+        assert val > 0.0, "{} = {} must be positive".format(name, val)
         return anp.log(anp.maximum(val, 1e-15))
-        
-        
+
+
 class PositiveScalarEncoding(ScalarEncodingBase):
     """
     PositiveScalarEncoding
@@ -218,21 +246,28 @@ class PositiveScalarEncoding(ScalarEncodingBase):
     NOTE: While lower is enforced by the encoding, the upper bound is not, has
     to be enforced by an optimizer.
     """
+
     def __init__(
-            self, lower, constr_upper=None, init_val=None, regularizer=None, dimension=1):
+        self, lower, constr_upper=None, init_val=None, regularizer=None, dimension=1
+    ):
         assert isinstance(lower, numbers.Real) and lower >= 0.0
         # lower should be a real number
         self.lower = lower
         super(PositiveScalarEncoding, self).__init__(
-            init_val, constr_lower=None, constr_upper=constr_upper,
-            regularizer=regularizer, dimension=dimension)
+            init_val,
+            constr_lower=None,
+            constr_upper=constr_upper,
+            regularizer=regularizer,
+            dimension=dimension,
+        )
 
     def get(self, param_internal):
         return anp.log1p(anp.exp(param_internal)) + self.lower
-        
+
     def decode(self, val, name):
-        assert val > self.lower, '{} = {} must be > self.lower = {}'.format(
-                name, val, self.lower)
+        assert val > self.lower, "{} = {} must be > self.lower = {}".format(
+            name, val, self.lower
+        )
         # Inverse of encoding: Careful with numerics:
         # val_int = log(exp(arg) - 1) = arg + log(1 - exp(-arg))
         #         = arg + log1p(-exp(-arg))
@@ -243,14 +278,15 @@ class PositiveScalarEncoding(ScalarEncodingBase):
 class init_Constant(object):
     def __init__(self, val):
         self.val = val
-    def __call__(self, shape = (1,)):
-        return anp.ones(shape)*self.val
+
+    def __call__(self, shape=(1,)):
+        return anp.ones(shape) * self.val
 
 
 class ConstantPositiveVector(Block):
     """
     ConstantPositiveVector
-    
+
     # Just constant positive vectors...
     ======================
 
@@ -280,9 +316,11 @@ class ConstantPositiveVector(Block):
             init_val_int = encoding.init_val_int
             # Note: The initialization values are bogus!
             self.param_internal = self.params.get(
-                param_name + '_internal',
+                param_name + "_internal",
                 init=init_Constant(init_val_int),
-                shape=(1,), dtype=DATA_TYPE)
+                shape=(1,),
+                dtype=DATA_TYPE,
+            )
 
     def forward(self, features, param_internal):
         """Returns constant positive vector
@@ -297,7 +335,7 @@ class ConstantPositiveVector(Block):
         # Shape, dtype, ctx is determined by extracting column or row from
         # features, then use ones_like
         axis = 0 if self.size_cols else 1
-        ones_vec = anp.ones((features.size//getval(features.shape)[axis], 1))
+        ones_vec = anp.ones((features.size // getval(features.shape)[axis], 1))
         param = anp.reshape(self.encoding.get(param_internal), (1, 1))
         return anp.multiply(ones_vec, param)
         # returned (para_internal, ..., para_interval)
@@ -306,16 +344,14 @@ class ConstantPositiveVector(Block):
         self.encoding.set(self.param_internal, val)
 
     def get(self):
-        param_internal = unwrap_parameter(
-              self.param_internal, None)
+        param_internal = unwrap_parameter(self.param_internal, None)
         return self.encoding.get(param_internal)
 
     def get_box_constraints_internal(self):
-        return self.encoding.box_constraints_internal(
-            self.param_internal)
+        return self.encoding.box_constraints_internal(self.param_internal)
 
     def log_parameters(self):
-        return '{} = {}'.format(self.param_name, self.get())
+        return "{} = {}".format(self.param_name, self.get())
 
     def get_parameters(self):
         return {self.param_name: self.get()}
@@ -330,16 +366,15 @@ class ConstantPositiveVector(Block):
 
         :param flag: Update parameter during learning?
         """
-        grad_req = 'write' if flag else 'null'
+        grad_req = "write" if flag else "null"
         self.param_internal.grad_req = grad_req
 
     def has_regularizer(self):
-        return (self.encoding.regularizer is not None)
+        return self.encoding.regularizer is not None
 
     def eval_regularizer(self, features):
         if self.has_regularizer():
-            param_internal = unwrap_parameter(
-                self.param_internal, features)
+            param_internal = unwrap_parameter(self.param_internal, features)
             param = self.encoding.get(param_internal)
             return self.encoding.regularizer(param)
         else:

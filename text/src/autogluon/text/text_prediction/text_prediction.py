@@ -12,22 +12,30 @@ from autogluon_contrib_nlp.utils.registry import Registry
 from autogluon_contrib_nlp.utils.misc import logging_config
 
 from . import constants as _C
-from .dataset import random_split_train_val, TabularDataset, infer_problem_type,\
-    get_column_properties
+from .dataset import (
+    random_split_train_val,
+    TabularDataset,
+    infer_problem_type,
+    get_column_properties,
+)
 from .models.basic_v1 import BertForTextPredictionBasic
 from autogluon.core.task.base import BaseTask
 from autogluon.core import space
 from autogluon.core.utils import in_ipynb
 from autogluon.core.utils.loaders import load_pd
-from autogluon.core.utils.utils import get_cpu_count, get_gpu_count, default_holdout_frac
+from autogluon.core.utils.utils import (
+    get_cpu_count,
+    get_gpu_count,
+    default_holdout_frac,
+)
 from autogluon.core.utils.miscs import verbosity2loglevel
 
 
-__all__ = ['TextPrediction', 'ag_text_prediction_params']
+__all__ = ["TextPrediction", "ag_text_prediction_params"]
 
 logger = logging.getLogger(__name__)  # return root logger
 
-ag_text_prediction_params = Registry('ag_text_prediction_params')
+ag_text_prediction_params = Registry("ag_text_prediction_params")
 
 
 @ag_text_prediction_params.register()
@@ -38,28 +46,28 @@ def default() -> dict:
     Each model has its own search space inside.
     """
     ret = {
-        'version': 1,
-        'models': {
-            'BertForTextPredictionBasic': {
-                'search_space': {
-                    'model.backbone.name': 'google_electra_small',
-                    'optimization.batch_size': 32,
-                    'optimization.per_device_batch_size': 16,
-                    'optimization.num_train_epochs': 4,
-                    'optimization.lr': space.Real(1E-5, 1E-4, default=5E-5),
-                    'optimization.layerwise_lr_decay': 0.8
+        "version": 1,
+        "models": {
+            "BertForTextPredictionBasic": {
+                "search_space": {
+                    "model.backbone.name": "google_electra_small",
+                    "optimization.batch_size": 32,
+                    "optimization.per_device_batch_size": 16,
+                    "optimization.num_train_epochs": 4,
+                    "optimization.lr": space.Real(1e-5, 1e-4, default=5e-5),
+                    "optimization.layerwise_lr_decay": 0.8,
                 }
             },
         },
-        'hpo_params': {
-            'search_strategy': 'local_sequential_auto',   # Can be 'random', 'bayesopt', 'skopt',
-                                           # 'hyperband', 'bayesopt_hyperband', local_sequential_auto
-            'search_options': None,        # Extra kwargs passed to searcher
-            'scheduler_options': None,     # Extra kwargs passed to scheduler
-            'time_limits': None,           # The total time limit
-            'num_trials': 3,               # The number of trials
+        "hpo_params": {
+            "search_strategy": "local_sequential_auto",  # Can be 'random', 'bayesopt', 'skopt',
+            # 'hyperband', 'bayesopt_hyperband', local_sequential_auto
+            "search_options": None,  # Extra kwargs passed to searcher
+            "scheduler_options": None,  # Extra kwargs passed to scheduler
+            "time_limits": None,  # The total time limit
+            "num_trials": 3,  # The number of trials
         },
-        'seed': None,                      # The seed value
+        "seed": None,  # The seed value
     }
     return ret
 
@@ -68,7 +76,7 @@ def default() -> dict:
 def default_no_hpo() -> dict:
     """The default hyperparameters without HPO"""
     cfg = default()
-    cfg['hpo_params']['num_trials'] = 1
+    cfg["hpo_params"]["num_trials"] = 1
     return cfg
 
 
@@ -76,10 +84,12 @@ def default_no_hpo() -> dict:
 def default_electra_small_no_hpo() -> dict:
     """The default search space that uses ELECTRA Small as the backbone."""
     cfg = default_no_hpo()
-    cfg['models']['BertForTextPredictionBasic']['search_space']['model.backbone.name'] \
-        = 'google_electra_small'
-    cfg['models']['BertForTextPredictionBasic']['search_space'][
-        'optimization.per_device_batch_size'] = 16
+    cfg["models"]["BertForTextPredictionBasic"]["search_space"][
+        "model.backbone.name"
+    ] = "google_electra_small"
+    cfg["models"]["BertForTextPredictionBasic"]["search_space"][
+        "optimization.per_device_batch_size"
+    ] = 16
     return cfg
 
 
@@ -87,10 +97,12 @@ def default_electra_small_no_hpo() -> dict:
 def default_electra_base_no_hpo() -> dict:
     """The default search space that uses ELECTRA Base as the backbone"""
     cfg = default_no_hpo()
-    cfg['models']['BertForTextPredictionBasic']['search_space']['model.backbone.name'] \
-        = 'google_electra_base'
-    cfg['models']['BertForTextPredictionBasic']['search_space'][
-        'optimization.per_device_batch_size'] = 8
+    cfg["models"]["BertForTextPredictionBasic"]["search_space"][
+        "model.backbone.name"
+    ] = "google_electra_base"
+    cfg["models"]["BertForTextPredictionBasic"]["search_space"][
+        "optimization.per_device_batch_size"
+    ] = 8
     return cfg
 
 
@@ -98,10 +110,12 @@ def default_electra_base_no_hpo() -> dict:
 def default_electra_large_no_hpo() -> dict:
     """The default search space that uses ELECTRA Base as the backbone"""
     cfg = default_no_hpo()
-    cfg['models']['BertForTextPredictionBasic']['search_space']['model.backbone.name'] \
-        = 'google_electra_large'
-    cfg['models']['BertForTextPredictionBasic']['search_space'][
-        'optimization.per_device_batch_size'] = 4
+    cfg["models"]["BertForTextPredictionBasic"]["search_space"][
+        "model.backbone.name"
+    ] = "google_electra_large"
+    cfg["models"]["BertForTextPredictionBasic"]["search_space"][
+        "optimization.per_device_batch_size"
+    ] = 4
     return cfg
 
 
@@ -137,8 +151,7 @@ def merge_params(base_params, partial_params=None):
         return final_params
 
 
-def get_recommended_resource(nthreads_per_trial=None,
-                             ngpus_per_trial=None) -> dict:
+def get_recommended_resource(nthreads_per_trial=None, ngpus_per_trial=None) -> dict:
     """Get the recommended resources.
 
     Internally, we will try to use GPU whenever it's possible. That means, we will use
@@ -169,15 +182,15 @@ def get_recommended_resource(nthreads_per_trial=None,
             nthreads_per_trial = min(get_cpu_count(), 4)
     nthreads_per_trial = min(nthreads_per_trial, get_cpu_count())
     ngpus_per_trial = min(ngpus_per_trial, get_gpu_count())
-    assert nthreads_per_trial > 0 and ngpus_per_trial >= 0,\
-        'Invalid number of threads and number of GPUs.'
-    return {'num_cpus': nthreads_per_trial, 'num_gpus': ngpus_per_trial}
+    assert (
+        nthreads_per_trial > 0 and ngpus_per_trial >= 0
+    ), "Invalid number of threads and number of GPUs."
+    return {"num_cpus": nthreads_per_trial, "num_gpus": ngpus_per_trial}
 
 
-def infer_eval_stop_log_metrics(problem_type,
-                                label_shape,
-                                eval_metric=None,
-                                stopping_metric=None):
+def infer_eval_stop_log_metrics(
+    problem_type, label_shape, eval_metric=None, stopping_metric=None
+):
     """Decide default evaluation, stopping, and logging metrics (based on type of prediction problem).
 
     Parameters
@@ -206,21 +219,21 @@ def infer_eval_stop_log_metrics(problem_type,
             stopping_metric = eval_metric[0]
     if problem_type == _C.CLASSIFICATION:
         if stopping_metric is None:
-            stopping_metric = 'acc'
+            stopping_metric = "acc"
         if eval_metric is None:
-            eval_metric = 'acc'
+            eval_metric = "acc"
         if label_shape == 2:
-            log_metrics = ['f1', 'mcc', 'roc_auc', 'acc', 'log_loss']
+            log_metrics = ["f1", "mcc", "roc_auc", "acc", "log_loss"]
         else:
-            log_metrics = ['acc', 'log_loss']
+            log_metrics = ["acc", "log_loss"]
     elif problem_type == _C.REGRESSION:
         if stopping_metric is None:
-            stopping_metric = 'mse'
+            stopping_metric = "mse"
         if eval_metric is None:
-            eval_metric = 'mse'
-        log_metrics = ['mse', 'rmse', 'mae']
+            eval_metric = "mse"
+        log_metrics = ["mse", "rmse", "mae"]
     else:
-        raise NotImplementedError('The problem type is not supported yet!')
+        raise NotImplementedError("The problem type is not supported yet!")
     for other_log_metric in [stopping_metric, eval_metric]:
         if isinstance(other_log_metric, str) and other_log_metric not in log_metrics:
             log_metrics.append(other_log_metric)
@@ -237,27 +250,30 @@ class TextPrediction(BaseTask):
     """AutoGluon Task for classification/regression with text data."""
 
     @classmethod
-    def fit(cls, train_data,
-            label,
-            tuning_data=None,
-            time_limits=None,
-            output_directory='./ag_text',
-            feature_columns=None,
-            holdout_frac=None,
-            eval_metric=None,
-            stopping_metric=None,
-            nthreads_per_trial=None,
-            ngpus_per_trial=None,
-            dist_ip_addrs=None,
-            num_trials=None,
-            search_strategy=None,
-            search_options=None,
-            scheduler_options=None,
-            hyperparameters=None,
-            plot_results=None,
-            seed=None,
-            visualizer=None,
-            verbosity=2):
+    def fit(
+        cls,
+        train_data,
+        label,
+        tuning_data=None,
+        time_limits=None,
+        output_directory="./ag_text",
+        feature_columns=None,
+        holdout_frac=None,
+        eval_metric=None,
+        stopping_metric=None,
+        nthreads_per_trial=None,
+        ngpus_per_trial=None,
+        dist_ip_addrs=None,
+        num_trials=None,
+        search_strategy=None,
+        search_options=None,
+        scheduler_options=None,
+        hyperparameters=None,
+        plot_results=None,
+        seed=None,
+        visualizer=None,
+        verbosity=2,
+    ):
         """Fit models to make predictions based on text inputs.
 
         Parameters
@@ -335,33 +351,42 @@ class TextPrediction(BaseTask):
         model
             A `BertForTextPredictionBasic` object that can be used for making predictions on new data.
         """
-        assert dist_ip_addrs is None, 'Training on remote machine is currently not supported.'
+        assert (
+            dist_ip_addrs is None
+        ), "Training on remote machine is currently not supported."
         # Version check of MXNet
-        if version.parse(mxnet.__version__) < version.parse('1.7.0') \
-                or version.parse(mxnet.__version__) >= version.parse('2.0.0'):
-            raise ImportError('You will need to ensure that you have mxnet>=1.7.0, <2.0.0. '
-                              'For more information about how to install mxnet, you can refer to '
-                              'https://sxjscience.github.io/KDD2020/ .')
+        if version.parse(mxnet.__version__) < version.parse("1.7.0") or version.parse(
+            mxnet.__version__
+        ) >= version.parse("2.0.0"):
+            raise ImportError(
+                "You will need to ensure that you have mxnet>=1.7.0, <2.0.0. "
+                "For more information about how to install mxnet, you can refer to "
+                "https://sxjscience.github.io/KDD2020/ ."
+            )
 
         if verbosity < 0:
             verbosity = 0
         elif verbosity > 4:
             verbosity = 4
         console_log = verbosity >= 2
-        logging_config(folder=output_directory, name='ag_text_prediction',
-                       logger=logger, level=verbosity2loglevel(verbosity),
-                       console=console_log)
+        logging_config(
+            folder=output_directory,
+            name="ag_text_prediction",
+            logger=logger,
+            level=verbosity2loglevel(verbosity),
+            console=console_log,
+        )
         # Parse the hyper-parameters
         if hyperparameters is None:
-            hyperparameters = ag_text_prediction_params.create('default')
+            hyperparameters = ag_text_prediction_params.create("default")
         elif isinstance(hyperparameters, str):
             hyperparameters = ag_text_prediction_params.create(hyperparameters)
         else:
-            base_params = ag_text_prediction_params.create('default')
+            base_params = ag_text_prediction_params.create("default")
             hyperparameters = merge_params(base_params, hyperparameters)
         if seed is not None:
-            hyperparameters['seed'] = seed
-        np.random.seed(hyperparameters['seed'])
+            hyperparameters["seed"] = seed
+        np.random.seed(hyperparameters["seed"])
         if not isinstance(train_data, pd.DataFrame):
             train_data = load_pd.load(train_data)
         # Inference the label
@@ -380,17 +405,21 @@ class TextPrediction(BaseTask):
             if isinstance(feature_columns, str):
                 feature_columns = [feature_columns]
             for col in feature_columns:
-                assert col not in label_columns, 'Feature columns and label columns cannot overlap.'
-                assert col in train_data.columns,\
-                    'Feature columns must be in the pandas dataframe! Received col = "{}", ' \
+                assert (
+                    col not in label_columns
+                ), "Feature columns and label columns cannot overlap."
+                assert col in train_data.columns, (
+                    'Feature columns must be in the pandas dataframe! Received col = "{}", '
                     'all columns = "{}"'.format(col, train_data.columns)
+                )
             all_columns = feature_columns + label_columns
             all_columns = [ele for ele in train_data.columns if ele in all_columns]
         if tuning_data is None:
             if holdout_frac is None:
                 holdout_frac = default_holdout_frac(len(train_data), True)
-            train_data, tuning_data = random_split_train_val(train_data,
-                                                             valid_ratio=holdout_frac)
+            train_data, tuning_data = random_split_train_val(
+                train_data, valid_ratio=holdout_frac
+            )
 
         else:
             if not isinstance(tuning_data, pd.DataFrame):
@@ -402,135 +431,162 @@ class TextPrediction(BaseTask):
             metadata=None,
             label_columns=label_columns,
             provided_column_properties=None,
-            categorical_default_handle_missing_value=True)
+            categorical_default_handle_missing_value=True,
+        )
         has_text_column = False
         for k, v in column_properties.items():
             if v.type == _C.TEXT:
                 has_text_column = True
                 break
         if not has_text_column:
-            raise AssertionError('No Text Column is found! This is currently not supported by '
-                                 'the TextPrediction task. You may try to use '
-                                 'autogluon.tabular.TabularPredictor.\n'
-                                 'The inferred column properties of the training data is {}'
-                                 .format(train_data))
-        train_data = TabularDataset(train_data,
-                                    column_properties=column_properties,
-                                    label_columns=label_columns)
-        tuning_data = TabularDataset(tuning_data,
-                                     column_properties=train_data.column_properties,
-                                     label_columns=label_columns)
+            raise AssertionError(
+                "No Text Column is found! This is currently not supported by "
+                "the TextPrediction task. You may try to use "
+                "autogluon.tabular.TabularPredictor.\n"
+                "The inferred column properties of the training data is {}".format(
+                    train_data
+                )
+            )
+        train_data = TabularDataset(
+            train_data, column_properties=column_properties, label_columns=label_columns
+        )
+        tuning_data = TabularDataset(
+            tuning_data,
+            column_properties=train_data.column_properties,
+            label_columns=label_columns,
+        )
 
-        logger.info('Train Dataset:')
+        logger.info("Train Dataset:")
         logger.info(train_data)
-        logger.info('Tuning Dataset:')
+        logger.info("Tuning Dataset:")
         logger.info(tuning_data)
-        logger.debug('Hyperparameters:')
+        logger.debug("Hyperparameters:")
         logger.debug(hyperparameters)
 
         problem_types = []
         label_shapes = []
         for label_col_name in label_columns:
-            problem_type, label_shape = infer_problem_type(column_properties=column_properties,
-                                                           label_col_name=label_col_name)
+            problem_type, label_shape = infer_problem_type(
+                column_properties=column_properties, label_col_name=label_col_name
+            )
             problem_types.append(problem_type)
             label_shapes.append(label_shape)
-        logging.info('Label columns={}, Feature columns={}, Problem types={}, Label shapes={}'
-            .format(label_columns, feature_columns,
-                    problem_types, label_shapes))
-        eval_metric, stopping_metric, log_metrics =\
-            infer_eval_stop_log_metrics(problem_types[0],
-                                        label_shapes[0],
-                                        eval_metric=eval_metric,
-                                        stopping_metric=stopping_metric)
-        logging.info('Eval Metric={}, Stop Metric={}, Log Metrics={}'.format(eval_metric,
-                                                                             stopping_metric,
-                                                                             log_metrics))
+        logging.info(
+            "Label columns={}, Feature columns={}, Problem types={}, Label shapes={}".format(
+                label_columns, feature_columns, problem_types, label_shapes
+            )
+        )
+        eval_metric, stopping_metric, log_metrics = infer_eval_stop_log_metrics(
+            problem_types[0],
+            label_shapes[0],
+            eval_metric=eval_metric,
+            stopping_metric=stopping_metric,
+        )
+        logging.info(
+            "Eval Metric={}, Stop Metric={}, Log Metrics={}".format(
+                eval_metric, stopping_metric, log_metrics
+            )
+        )
         model_candidates = []
-        for model_type, kwargs in hyperparameters['models'].items():
-            search_space = kwargs['search_space']
-            if model_type == 'BertForTextPredictionBasic':
-                model = BertForTextPredictionBasic(column_properties=column_properties,
-                                                   label_columns=label_columns,
-                                                   feature_columns=feature_columns,
-                                                   label_shapes=label_shapes,
-                                                   problem_types=problem_types,
-                                                   stopping_metric=stopping_metric,
-                                                   log_metrics=log_metrics,
-                                                   base_config=None,
-                                                   search_space=search_space,
-                                                   output_directory=output_directory,
-                                                   logger=logger)
+        for model_type, kwargs in hyperparameters["models"].items():
+            search_space = kwargs["search_space"]
+            if model_type == "BertForTextPredictionBasic":
+                model = BertForTextPredictionBasic(
+                    column_properties=column_properties,
+                    label_columns=label_columns,
+                    feature_columns=feature_columns,
+                    label_shapes=label_shapes,
+                    problem_types=problem_types,
+                    stopping_metric=stopping_metric,
+                    log_metrics=log_metrics,
+                    base_config=None,
+                    search_space=search_space,
+                    output_directory=output_directory,
+                    logger=logger,
+                )
                 model_candidates.append(model)
             else:
-                raise ValueError('model_type = "{}" is not supported. You can try to use '
-                                 'model_type = "BertForTextPredictionBasic"'.format(model_type))
-        assert len(model_candidates) == 1, 'Only one model is supported currently'
-        recommended_resource = get_recommended_resource(nthreads_per_trial=nthreads_per_trial,
-                                                        ngpus_per_trial=ngpus_per_trial)
+                raise ValueError(
+                    'model_type = "{}" is not supported. You can try to use '
+                    'model_type = "BertForTextPredictionBasic"'.format(model_type)
+                )
+        assert len(model_candidates) == 1, "Only one model is supported currently"
+        recommended_resource = get_recommended_resource(
+            nthreads_per_trial=nthreads_per_trial, ngpus_per_trial=ngpus_per_trial
+        )
         if search_strategy is None:
-            search_strategy = hyperparameters['hpo_params']['search_strategy']
+            search_strategy = hyperparameters["hpo_params"]["search_strategy"]
         if time_limits is None:
-            time_limits = hyperparameters['hpo_params']['time_limits']
+            time_limits = hyperparameters["hpo_params"]["time_limits"]
         else:
             if isinstance(time_limits, str):
-                if time_limits.endswith('min'):
+                if time_limits.endswith("min"):
                     time_limits = int(float(time_limits[:-3]) * 60)
-                elif time_limits.endswith('hour'):
+                elif time_limits.endswith("hour"):
                     time_limits = int(float(time_limits[:-4]) * 60 * 60)
                 else:
-                    raise ValueError('The given time_limits="{}" cannot be parsed!'
-                                     .format(time_limits))
+                    raise ValueError(
+                        'The given time_limits="{}" cannot be parsed!'.format(
+                            time_limits
+                        )
+                    )
         if num_trials is None:
-            num_trials = hyperparameters['hpo_params']['num_trials']
+            num_trials = hyperparameters["hpo_params"]["num_trials"]
         if scheduler_options is None:
-            scheduler_options = hyperparameters['hpo_params']['scheduler_options']
+            scheduler_options = hyperparameters["hpo_params"]["scheduler_options"]
             if scheduler_options is None:
                 scheduler_options = dict()
-        scheduler_options['visualizer'] = visualizer
-        if search_strategy.endswith('hyperband'):
+        scheduler_options["visualizer"] = visualizer
+        if search_strategy.endswith("hyperband"):
             # Specific defaults for hyperband scheduling
-            scheduler_options['reduction_factor'] = scheduler_options.get(
-                'reduction_factor', 4)
-            scheduler_options['grace_period'] = scheduler_options.get(
-                'grace_period', 10)
-            scheduler_options['max_t'] = scheduler_options.get(
-                'max_t', 50)
+            scheduler_options["reduction_factor"] = scheduler_options.get(
+                "reduction_factor", 4
+            )
+            scheduler_options["grace_period"] = scheduler_options.get(
+                "grace_period", 10
+            )
+            scheduler_options["max_t"] = scheduler_options.get("max_t", 50)
 
-        if recommended_resource['num_gpus'] == 0:
-            if 'AUTOGLUON_TEXT_TRAIN_WITHOUT_GPU' in os.environ:
-                use_warning = int(os.environ['AUTOGLUON_TEXT_TRAIN_WITHOUT_GPU'])
+        if recommended_resource["num_gpus"] == 0:
+            if "AUTOGLUON_TEXT_TRAIN_WITHOUT_GPU" in os.environ:
+                use_warning = int(os.environ["AUTOGLUON_TEXT_TRAIN_WITHOUT_GPU"])
             else:
                 use_warning = False
             if use_warning:
-                warnings.warn('No GPU is detected in the machine and we will recommend you to '
-                              'use TextPrediction on a GPU-enabled instance. Currently, '
-                              'training on CPU is slow.')
+                warnings.warn(
+                    "No GPU is detected in the machine and we will recommend you to "
+                    "use TextPrediction on a GPU-enabled instance. Currently, "
+                    "training on CPU is slow."
+                )
             else:
-                raise RuntimeError('No GPU is detected in the machine and we will '
-                                   'not proceed to run TexPrediction because they will train '
-                                   'too slowly with only CPU. You may try to set `ngpus_per_trial` '
-                                   'to a number larger than 0 when calling `.fit()`. '
-                                   'Also, you can set the environment variable '
-                                   '"AUTOGLUON_TEXT_TRAIN_WITHOUT_GPU=1" to force the model to '
-                                   'use CPU for training.')
+                raise RuntimeError(
+                    "No GPU is detected in the machine and we will "
+                    "not proceed to run TexPrediction because they will train "
+                    "too slowly with only CPU. You may try to set `ngpus_per_trial` "
+                    "to a number larger than 0 when calling `.fit()`. "
+                    "Also, you can set the environment variable "
+                    '"AUTOGLUON_TEXT_TRAIN_WITHOUT_GPU=1" to force the model to '
+                    "use CPU for training."
+                )
         model = model_candidates[0]
         if plot_results is None:
             if in_ipynb():
                 plot_results = True
             else:
                 plot_results = False
-        model.train(train_data=train_data,
-                    tuning_data=tuning_data,
-                    resource=recommended_resource,
-                    time_limits=time_limits,
-                    search_strategy=search_strategy,
-                    search_options=search_options,
-                    scheduler_options=scheduler_options,
-                    num_trials=num_trials,
-                    plot_results=plot_results,
-                    console_log=verbosity >= 2,
-                    ignore_warning=verbosity <= 2)
+        model.train(
+            train_data=train_data,
+            tuning_data=tuning_data,
+            resource=recommended_resource,
+            time_limits=time_limits,
+            search_strategy=search_strategy,
+            search_options=search_options,
+            scheduler_options=scheduler_options,
+            num_trials=num_trials,
+            plot_results=plot_results,
+            console_log=verbosity >= 2,
+            ignore_warning=verbosity <= 2,
+        )
         return model
 
     @staticmethod

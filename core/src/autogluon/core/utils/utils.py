@@ -14,7 +14,12 @@ import pandas as pd
 import psutil
 import scipy.stats
 from pandas import DataFrame, Series
-from sklearn.model_selection import KFold, StratifiedKFold, RepeatedKFold, RepeatedStratifiedKFold
+from sklearn.model_selection import (
+    KFold,
+    StratifiedKFold,
+    RepeatedKFold,
+    RepeatedStratifiedKFold,
+)
 from sklearn.model_selection import train_test_split
 
 from ..constants import BINARY, REGRESSION, MULTICLASS, SOFTCLASS
@@ -31,25 +36,35 @@ def get_cpu_count():
 
 def get_gpu_count():
     from .nvutil import cudaInit, cudaDeviceGetCount, cudaShutdown
-    if not cudaInit(): return 0
+
+    if not cudaInit():
+        return 0
     gpu_count = cudaDeviceGetCount()
     cudaShutdown()
     return gpu_count
 
 
-def generate_kfold(X, y=None, n_splits=5, random_state=0, stratified=False, n_repeats=1):
+def generate_kfold(
+    X, y=None, n_splits=5, random_state=0, stratified=False, n_repeats=1
+):
     # TODO: Add GroupKFold
     if stratified and (y is not None):
         if n_repeats > 1:
-            kf = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=random_state)
+            kf = RepeatedStratifiedKFold(
+                n_splits=n_splits, n_repeats=n_repeats, random_state=random_state
+            )
         else:
-            kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+            kf = StratifiedKFold(
+                n_splits=n_splits, shuffle=True, random_state=random_state
+            )
 
         kf.get_n_splits(X, y)
         return [[train_index, test_index] for train_index, test_index in kf.split(X, y)]
     else:
         if n_repeats > 1:
-            kf = RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=random_state)
+            kf = RepeatedKFold(
+                n_splits=n_splits, n_repeats=n_repeats, random_state=random_state
+            )
         else:
             kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
 
@@ -75,7 +90,9 @@ def setup_outputdir(path, warn_if_exist=True):
         try:
             os.makedirs(path, exist_ok=False)
         except FileExistsError as e:
-            logger.warning(f'Warning: path already exists! This predictor may overwrite an existing predictor! path="{path}"')
+            logger.warning(
+                f'Warning: path already exists! This predictor may overwrite an existing predictor! path="{path}"'
+            )
     path = os.path.expanduser(path)  # replace ~ with absolute path if it exists
     if path[-1] != os.path.sep:
         path = path + os.path.sep
@@ -83,16 +100,22 @@ def setup_outputdir(path, warn_if_exist=True):
 
 
 def setup_compute(nthreads_per_trial, ngpus_per_trial):
-    if nthreads_per_trial is None or nthreads_per_trial == 'all':
-        nthreads_per_trial = get_cpu_count()  # Use all of processing power / trial by default. To use just half: # int(np.floor(multiprocessing.cpu_count()/2))
+    if nthreads_per_trial is None or nthreads_per_trial == "all":
+        nthreads_per_trial = (
+            get_cpu_count()
+        )  # Use all of processing power / trial by default. To use just half: # int(np.floor(multiprocessing.cpu_count()/2))
     if ngpus_per_trial is None:
         ngpus_per_trial = 0  # do not use GPU by default
-    elif ngpus_per_trial == 'all':
+    elif ngpus_per_trial == "all":
         ngpus_per_trial = get_gpu_count()
-    if not isinstance(nthreads_per_trial, int) and nthreads_per_trial != 'auto':
-        raise ValueError(f'nthreads_per_trial must be an integer or "auto": nthreads_per_trial = {nthreads_per_trial}')
-    if not isinstance(ngpus_per_trial, int) and ngpus_per_trial != 'auto':
-        raise ValueError(f'ngpus_per_trial must be an integer or "auto": ngpus_per_trial = {ngpus_per_trial}')
+    if not isinstance(nthreads_per_trial, int) and nthreads_per_trial != "auto":
+        raise ValueError(
+            f'nthreads_per_trial must be an integer or "auto": nthreads_per_trial = {nthreads_per_trial}'
+        )
+    if not isinstance(ngpus_per_trial, int) and ngpus_per_trial != "auto":
+        raise ValueError(
+            f'ngpus_per_trial must be an integer or "auto": ngpus_per_trial = {ngpus_per_trial}'
+        )
     return nthreads_per_trial, ngpus_per_trial
 
 
@@ -101,12 +124,20 @@ def setup_trial_limits(time_limit, num_trials, hyperparameters):
     if num_trials is None:
         if time_limit is None:
             time_limit = 10 * 60  # run for 10min by default
-        time_limit /= float(len(hyperparameters))  # each model type gets half the available time
-        num_trials = 1000  # run up to 1000 trials (or as you can within the given time_limit)
+        time_limit /= float(
+            len(hyperparameters)
+        )  # each model type gets half the available time
+        num_trials = (
+            1000  # run up to 1000 trials (or as you can within the given time_limit)
+        )
     elif time_limit is None:
-        time_limit = int(1e6)  # user only specified num_trials, so run all of them regardless of time_limit
+        time_limit = int(
+            1e6
+        )  # user only specified num_trials, so run all of them regardless of time_limit
     else:
-        time_limit /= float(len(hyperparameters))  # each model type gets half the available time
+        time_limit /= float(
+            len(hyperparameters)
+        )  # each model type gets half the available time
 
     if time_limit <= 10:  # threshold = 10sec, ie. too little time to run >1 trial.
         num_trials = 1
@@ -114,7 +145,11 @@ def setup_trial_limits(time_limit, num_trials, hyperparameters):
     return time_limit, num_trials
 
 
-def get_leaderboard_pareto_frontier(leaderboard: DataFrame, score_col='score_val', inference_time_col='pred_time_val_full') -> DataFrame:
+def get_leaderboard_pareto_frontier(
+    leaderboard: DataFrame,
+    score_col="score_val",
+    inference_time_col="pred_time_val_full",
+) -> DataFrame:
     """
     Given a set of models, returns in ranked order from best score to worst score models which satisfy the criteria:
     1. No other model in the set has both a lower inference time and a better or equal score.
@@ -124,7 +159,9 @@ def get_leaderboard_pareto_frontier(leaderboard: DataFrame, score_col='score_val
     :param inference_time_col: Column name in leaderboard of model inference times
     :return: Subset of the original leaderboard DataFrame containing only models that are a valid optimal choice at different valuations of score and inference time.
     """
-    leaderboard = leaderboard.sort_values(by=[score_col, inference_time_col], ascending=[False, True]).reset_index(drop=True)
+    leaderboard = leaderboard.sort_values(
+        by=[score_col, inference_time_col], ascending=[False, True]
+    ).reset_index(drop=True)
     leaderboard_unique = leaderboard.drop_duplicates(subset=[score_col])
 
     pareto_frontier = []
@@ -132,10 +169,14 @@ def get_leaderboard_pareto_frontier(leaderboard: DataFrame, score_col='score_val
     for index, row in leaderboard_unique.iterrows():
         if row[inference_time_col] is None or row[score_col] is None:
             pass
-        elif (inference_time_min is None) or (row[inference_time_col] < inference_time_min):
+        elif (inference_time_min is None) or (
+            row[inference_time_col] < inference_time_min
+        ):
             inference_time_min = row[inference_time_col]
             pareto_frontier.append(index)
-    leaderboard_pareto_frontier = leaderboard_unique.loc[pareto_frontier].reset_index(drop=True)
+    leaderboard_pareto_frontier = leaderboard_unique.loc[pareto_frontier].reset_index(
+        drop=True
+    )
     return leaderboard_pareto_frontier
 
 
@@ -152,13 +193,20 @@ def shuffle_df_rows(X: DataFrame, seed=0, reset_index=True):
 
 def normalize_binary_probas(y_predprob, eps):
     """ Remaps the predicted probabilities to open interval (0,1) while maintaining rank order """
-    (pmin,pmax) = (eps, 1-eps)  # predicted probs outside this range will be remapped into (0,1)
+    (pmin, pmax) = (
+        eps,
+        1 - eps,
+    )  # predicted probs outside this range will be remapped into (0,1)
     which_toobig = y_predprob > pmax
     if np.sum(which_toobig) > 0:  # remap overly large probs
-        y_predprob = np.logical_not(which_toobig)*y_predprob + which_toobig*(1-(eps*np.exp(-(y_predprob-pmax))))
+        y_predprob = np.logical_not(which_toobig) * y_predprob + which_toobig * (
+            1 - (eps * np.exp(-(y_predprob - pmax)))
+        )
     which_toosmall = y_predprob < pmin
     if np.sum(which_toosmall) > 0:  # remap overly small probs
-        y_predprob = np.logical_not(which_toosmall)*y_predprob + which_toosmall*eps*np.exp(-(pmin-y_predprob))
+        y_predprob = np.logical_not(
+            which_toosmall
+        ) * y_predprob + which_toosmall * eps * np.exp(-(pmin - y_predprob))
     return y_predprob
 
 
@@ -167,16 +215,18 @@ def normalize_multi_probas(y_predprob, eps):
     min_predprob = np.min(y_predprob)
     if min_predprob < 0:  # ensure nonnegative rows
         most_negative_rowvals = np.clip(np.min(y_predprob, axis=1), a_min=None, a_max=0)
-        y_predprob = y_predprob - most_negative_rowvals[:,None]
+        y_predprob = y_predprob - most_negative_rowvals[:, None]
     if min_predprob < eps:
-        y_predprob = np.clip(y_predprob, a_min=eps, a_max=None)  # ensure no entries < eps
+        y_predprob = np.clip(
+            y_predprob, a_min=eps, a_max=None
+        )  # ensure no entries < eps
         y_predprob = y_predprob / y_predprob.sum(axis=1, keepdims=1)  # renormalize
     return y_predprob
 
 
 def default_holdout_frac(num_train_rows, hyperparameter_tune=False):
-    """ Returns default holdout_frac used in fit().
-        Between row count 5,000 and 25,000 keep 0.1 holdout_frac, as we want to grow validation set to a stable 2500 examples.
+    """Returns default holdout_frac used in fit().
+    Between row count 5,000 and 25,000 keep 0.1 holdout_frac, as we want to grow validation set to a stable 2500 examples.
     """
     if num_train_rows < 5000:
         holdout_frac = max(0.1, min(0.2, 500.0 / num_train_rows))
@@ -184,19 +234,23 @@ def default_holdout_frac(num_train_rows, hyperparameter_tune=False):
         holdout_frac = max(0.01, min(0.1, 2500.0 / num_train_rows))
 
     if hyperparameter_tune:
-        holdout_frac = min(0.2, holdout_frac * 2)  # We want to allocate more validation data for HPO to avoid overfitting
+        holdout_frac = min(
+            0.2, holdout_frac * 2
+        )  # We want to allocate more validation data for HPO to avoid overfitting
 
     return holdout_frac
 
 
 def augment_rare_classes(X, label, threshold):
-    """ Use this method when using certain eval_metrics like log_loss, for which no classes may be filtered out.
-        This method will augment dataset with additional examples of rare classes.
+    """Use this method when using certain eval_metrics like log_loss, for which no classes may be filtered out.
+    This method will augment dataset with additional examples of rare classes.
     """
     class_counts = X[label].value_counts()
     class_counts_invalid = class_counts[class_counts < threshold]
     if len(class_counts_invalid) == 0:
-        logger.debug("augment_rare_classes did not need to duplicate any data from rare classes")
+        logger.debug(
+            "augment_rare_classes did not need to duplicate any data from rare classes"
+        )
         return X
 
     missing_classes = []
@@ -204,10 +258,14 @@ def augment_rare_classes(X, label, threshold):
         if n_clss == 0:
             missing_classes.append(clss)
     if missing_classes:
-        logger.warning(f'WARNING: Classes were found that have 0 training examples, and may lead to downstream issues. '
-                       f'Consider either providing data for these classes or removing them from the class categories. '
-                       f'These classes will be ignored: {missing_classes}')
-        class_counts_invalid = class_counts_invalid[~class_counts_invalid.index.isin(set(missing_classes))]
+        logger.warning(
+            f"WARNING: Classes were found that have 0 training examples, and may lead to downstream issues. "
+            f"Consider either providing data for these classes or removing them from the class categories. "
+            f"These classes will be ignored: {missing_classes}"
+        )
+        class_counts_invalid = class_counts_invalid[
+            ~class_counts_invalid.index.isin(set(missing_classes))
+        ]
 
     aug_df = None
     for clss, n_clss in class_counts_invalid.iteritems():
@@ -228,11 +286,19 @@ def augment_rare_classes(X, label, threshold):
     X = X.append(aug_df)
     class_counts = X[label].value_counts()
     class_counts_invalid = class_counts[class_counts < threshold]
-    class_counts_invalid = class_counts_invalid[~class_counts_invalid.index.isin(set(missing_classes))]
+    class_counts_invalid = class_counts_invalid[
+        ~class_counts_invalid.index.isin(set(missing_classes))
+    ]
     if len(class_counts_invalid) > 0:
-        raise RuntimeError("augment_rare_classes failed to produce enough data from rare classes")
-    logger.log(15, "Replicated some data from rare classes in training set because eval_metric requires all classes")
+        raise RuntimeError(
+            "augment_rare_classes failed to produce enough data from rare classes"
+        )
+    logger.log(
+        15,
+        "Replicated some data from rare classes in training set because eval_metric requires all classes",
+    )
     return X
+
 
 def get_pred_from_proba(y_pred_proba, problem_type=BINARY):
     if problem_type == BINARY:
@@ -244,9 +310,13 @@ def get_pred_from_proba(y_pred_proba, problem_type=BINARY):
     return y_pred
 
 
-def generate_train_test_split(X: DataFrame, y: Series, problem_type: str, test_size: float = 0.1, random_state=0) -> (DataFrame, DataFrame, Series, Series):
+def generate_train_test_split(
+    X: DataFrame, y: Series, problem_type: str, test_size: float = 0.1, random_state=0
+) -> (DataFrame, DataFrame, Series, Series):
     if (test_size <= 0.0) or (test_size >= 1.0):
-        raise ValueError("fraction of data to hold-out must be specified between 0 and 1")
+        raise ValueError(
+            "fraction of data to hold-out must be specified between 0 and 1"
+        )
 
     if problem_type in [REGRESSION, SOFTCLASS]:
         stratify = None
@@ -257,7 +327,14 @@ def generate_train_test_split(X: DataFrame, y: Series, problem_type: str, test_s
     #  One approach: extract low frequency classes from X/y, add back (1-test_size)% to X_train, y_train, rest to X_test
     #  Essentially stratify the high frequency classes, random the low frequency (While ensuring at least 1 example stays for each low frequency in train!)
     #  Alternatively, don't test low frequency at all, trust it to work in train set. Risky, but highest quality for predictions.
-    X_train, X_test, y_train, y_test = train_test_split(X, y.values, test_size=test_size, shuffle=True, random_state=random_state, stratify=stratify)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y.values,
+        test_size=test_size,
+        shuffle=True,
+        random_state=random_state,
+        stratify=stratify,
+    )
     if problem_type != SOFTCLASS:
         y_train = pd.Series(y_train, index=X_train.index)
         y_test = pd.Series(y_test, index=X_test.index)
@@ -268,21 +345,30 @@ def generate_train_test_split(X: DataFrame, y: Series, problem_type: str, test_s
 
 
 def normalize_pred_probas(y_predprob, problem_type, eps=1e-7):
-    """ Remaps the predicted probabilities to ensure there are no zeros (needed for certain metrics like log-loss)
-        and that no predicted probability exceeds [0,1] (eg. in distillation when classification is treated as regression).
-        Args:
-            y_predprob: 1D (for binary classification) or 2D (for multiclass) numpy array of predicted probabilities
-            problem_type: We only consider normalization if the problem_type is one of: [BINARY, MULTICLASS, SOFTCLASS]
-            eps: controls around how far from 0 remapped predicted probabilities should be (larger `eps` means predicted probabilities will lie further from 0).
+    """Remaps the predicted probabilities to ensure there are no zeros (needed for certain metrics like log-loss)
+    and that no predicted probability exceeds [0,1] (eg. in distillation when classification is treated as regression).
+    Args:
+        y_predprob: 1D (for binary classification) or 2D (for multiclass) numpy array of predicted probabilities
+        problem_type: We only consider normalization if the problem_type is one of: [BINARY, MULTICLASS, SOFTCLASS]
+        eps: controls around how far from 0 remapped predicted probabilities should be (larger `eps` means predicted probabilities will lie further from 0).
     """
-    if (problem_type == REGRESSION) and (len(y_predprob.shape) > 1) and (y_predprob.shape[1] > 1):
+    if (
+        (problem_type == REGRESSION)
+        and (len(y_predprob.shape) > 1)
+        and (y_predprob.shape[1] > 1)
+    ):
         problem_type = SOFTCLASS  # this was MULTICLASS problem converted to REGRESSION (as done in distillation)
 
     if problem_type in [BINARY, REGRESSION]:
         if len(y_predprob.shape) > 1 and min(y_predprob.shape) > 1:
-            raise ValueError(f"cannot call normalize_pred_probas with problem_type={problem_type} and y_predprob.shape=={y_predprob.shape}")
+            raise ValueError(
+                f"cannot call normalize_pred_probas with problem_type={problem_type} and y_predprob.shape=={y_predprob.shape}"
+            )
         return normalize_binary_probas(y_predprob, eps)
-    elif problem_type in [MULTICLASS, SOFTCLASS]:  # clip all probs below at eps and then renormalize
+    elif problem_type in [
+        MULTICLASS,
+        SOFTCLASS,
+    ]:  # clip all probs below at eps and then renormalize
         if len(y_predprob.shape) == 1:
             return normalize_binary_probas(y_predprob, eps)
         else:
@@ -292,12 +378,14 @@ def normalize_pred_probas(y_predprob, problem_type, eps=1e-7):
 
 
 def infer_problem_type(y: Series, silent=False) -> str:
-    """ Identifies which type of prediction problem we are interested in (if user has not specified).
-        Ie. binary classification, multi-class classification, or regression.
+    """Identifies which type of prediction problem we are interested in (if user has not specified).
+    Ie. binary classification, multi-class classification, or regression.
     """
     if len(y) == 0:
         raise ValueError("provided labels cannot have length = 0")
-    y = y.dropna()  # Remove missing values from y (there should not be any though as they were removed in Learner.general_data_processing())
+    y = (
+        y.dropna()
+    )  # Remove missing values from y (there should not be any though as they were removed in Learner.general_data_processing())
     num_rows = len(y)
 
     unique_values = y.unique()
@@ -312,7 +400,7 @@ def infer_problem_type(y: Series, silent=False) -> str:
     if unique_count == 2:
         problem_type = BINARY
         reason = "only two unique label-values observed"
-    elif y.dtype.name in ['object', 'category']:
+    elif y.dtype.name in ["object", "category"]:
         problem_type = MULTICLASS
         reason = f"dtype of label-column == {y.dtype.name}"
     elif np.issubdtype(y.dtype, np.floating):
@@ -331,34 +419,54 @@ def infer_problem_type(y: Series, silent=False) -> str:
                 reason = "dtype of label-column == float and label-values can't be converted to int"
         else:
             problem_type = REGRESSION
-            reason = "dtype of label-column == float and many unique label-values observed"
+            reason = (
+                "dtype of label-column == float and many unique label-values observed"
+            )
     elif np.issubdtype(y.dtype, np.integer):
         unique_ratio = unique_count / float(num_rows)
         if (unique_ratio <= REGRESS_THRESHOLD) and (unique_count <= MULTICLASS_LIMIT):
             problem_type = MULTICLASS  # TODO: Check if integers are from 0 to n-1 for n unique values, if they have a wide spread, it could still be regression
-            reason = "dtype of label-column == int, but few unique label-values observed"
+            reason = (
+                "dtype of label-column == int, but few unique label-values observed"
+            )
         else:
             problem_type = REGRESSION
-            reason = "dtype of label-column == int and many unique label-values observed"
+            reason = (
+                "dtype of label-column == int and many unique label-values observed"
+            )
     else:
-        raise NotImplementedError(f'label dtype {y.dtype} not supported!')
+        raise NotImplementedError(f"label dtype {y.dtype} not supported!")
     if not silent:
-        logger.log(25, f"AutoGluon infers your prediction problem is: '{problem_type}' (because {reason}).")
+        logger.log(
+            25,
+            f"AutoGluon infers your prediction problem is: '{problem_type}' (because {reason}).",
+        )
 
         # TODO: Move this outside of this function so it is visible even if problem type was not inferred.
         if problem_type in [BINARY, MULTICLASS]:
             if unique_count > 10:
-                logger.log(20, f'\tFirst 10 (of {unique_count}) unique label values:  {list(unique_values[:10])}')
+                logger.log(
+                    20,
+                    f"\tFirst 10 (of {unique_count}) unique label values:  {list(unique_values[:10])}",
+                )
             else:
-                logger.log(20, f'\t{unique_count} unique label values:  {list(unique_values)}')
+                logger.log(
+                    20, f"\t{unique_count} unique label values:  {list(unique_values)}"
+                )
         elif problem_type == REGRESSION:
             y_max = y.max()
             y_min = y.min()
             y_mean = y.mean()
             y_stddev = y.std()
-            logger.log(20, f'\tLabel info (max, min, mean, stddev): ({y_max}, {y_min}, {round(y_mean, 5)}, {round(y_stddev, 5)})')
+            logger.log(
+                20,
+                f"\tLabel info (max, min, mean, stddev): ({y_max}, {y_min}, {round(y_mean, 5)}, {round(y_stddev, 5)})",
+            )
 
-        logger.log(25, f"\tIf '{problem_type}' is not the correct problem_type, please manually specify the problem_type argument in fit() (You may specify problem_type as one of: {[BINARY, MULTICLASS, REGRESSION]})")
+        logger.log(
+            25,
+            f"\tIf '{problem_type}' is not the correct problem_type, please manually specify the problem_type argument in fit() (You may specify problem_type as one of: {[BINARY, MULTICLASS, REGRESSION]})",
+        )
     return problem_type
 
 
@@ -382,8 +490,8 @@ def extract_column(X, col_name):
 
 
 def compute_weighted_metric(y, y_pred, metric, weights, weight_evaluation=None):
-    """ Report weighted metric if: weights is not None, weight_evaluation=True, and the given metric supports sample weights.
-        If weight_evaluation=None, it will be set to False if weights=None, True otherwise.
+    """Report weighted metric if: weights is not None, weight_evaluation=True, and the given metric supports sample weights.
+    If weight_evaluation=None, it will be set to False if weights=None, True otherwise.
     """
     if weight_evaluation is None:
         weight_evaluation = not (weights is None)
@@ -394,15 +502,32 @@ def compute_weighted_metric(y, y_pred, metric, weights, weight_evaluation=None):
     try:
         weighted_metric = metric(y, y_pred, sample_weight=weights)
     except (ValueError, TypeError, KeyError):
-        logger.log(30, f"WARNING: eval_metric='{metric.name}' does not support sample weights so they will be ignored in reported metric.")
+        logger.log(
+            30,
+            f"WARNING: eval_metric='{metric.name}' does not support sample weights so they will be ignored in reported metric.",
+        )
         weighted_metric = metric(y, y_pred)
     return weighted_metric
 
+
 # Note: Do not send training data as input or the importances will be overfit.
 # TODO: Improve time estimate (Currently pessimistic)
-def compute_permutation_feature_importance(X: pd.DataFrame, y: pd.Series, predict_func: Callable[..., np.ndarray], eval_metric: Scorer, features: list = None, subsample_size=None, num_shuffle_sets: int = None,
-                                           predict_func_kwargs: dict = None, transform_func: Callable[..., pd.DataFrame] = None, transform_func_kwargs: dict = None,
-                                           time_limit: float = None, silent=False, log_prefix='', importance_as_list=False) -> pd.DataFrame:
+def compute_permutation_feature_importance(
+    X: pd.DataFrame,
+    y: pd.Series,
+    predict_func: Callable[..., np.ndarray],
+    eval_metric: Scorer,
+    features: list = None,
+    subsample_size=None,
+    num_shuffle_sets: int = None,
+    predict_func_kwargs: dict = None,
+    transform_func: Callable[..., pd.DataFrame] = None,
+    transform_func_kwargs: dict = None,
+    time_limit: float = None,
+    silent=False,
+    log_prefix="",
+    importance_as_list=False,
+) -> pd.DataFrame:
     """
     Computes a trained model's feature importance via permutation shuffling (https://explained.ai/rf-importance/).
     A feature's importance score represents the performance drop that results when the model makes predictions on a perturbed copy of the dataset where this feature's values have been randomly shuffled across rows.
@@ -497,15 +622,15 @@ def compute_permutation_feature_importance(X: pd.DataFrame, y: pd.Series, predic
     subsample = num_rows < len(X)
 
     if not silent:
-        logging_message = f'{log_prefix}Computing feature importance via permutation shuffling for {num_features} features using {num_rows} rows with {num_shuffle_sets} shuffle sets...'
+        logging_message = f"{log_prefix}Computing feature importance via permutation shuffling for {num_features} features using {num_rows} rows with {num_shuffle_sets} shuffle sets..."
         if time_limit is not None:
-            logging_message = f'{logging_message} Time limit: {time_limit}s...'
+            logging_message = f"{logging_message} Time limit: {time_limit}s..."
         logger.log(20, logging_message)
 
     time_permutation_start = time.time()
     fi_dict_list = []
     shuffle_repeats_completed = 0
-    log_final_suffix = ''
+    log_final_suffix = ""
 
     X_orig = X
     y_orig = y
@@ -523,30 +648,49 @@ def compute_permutation_feature_importance(X: pd.DataFrame, y: pd.Series, predic
 
         if subsample or shuffle_repeat == 0:
             time_start_score = time.time()
-            X_transformed = X if transform_func is None else transform_func(X, **transform_func_kwargs)
+            X_transformed = (
+                X
+                if transform_func is None
+                else transform_func(X, **transform_func_kwargs)
+            )
             y_pred = predict_func(X_transformed, **predict_func_kwargs)
             score_baseline = eval_metric(y, y_pred)
             if shuffle_repeat == 0:
                 if not silent:
                     time_score = time.time() - time_start_score
-                    time_estimated = ((num_features + 1) * time_score) * num_shuffle_sets + time_start_score - time_start
+                    time_estimated = (
+                        ((num_features + 1) * time_score) * num_shuffle_sets
+                        + time_start_score
+                        - time_start
+                    )
                     time_estimated_per_set = time_estimated / num_shuffle_sets
-                    logger.log(20, f'{log_prefix}\t{round(time_estimated, 2)}s\t= Expected runtime ({round(time_estimated_per_set, 2)}s per shuffle set)')
+                    logger.log(
+                        20,
+                        f"{log_prefix}\t{round(time_estimated, 2)}s\t= Expected runtime ({round(time_estimated_per_set, 2)}s per shuffle set)",
+                    )
 
                 if transform_func is None:
-                    feature_batch_count = _get_safe_fi_batch_count(X=X, num_features=num_features)
+                    feature_batch_count = _get_safe_fi_batch_count(
+                        X=X, num_features=num_features
+                    )
                 else:
-                    feature_batch_count = _get_safe_fi_batch_count(X=X, num_features=num_features, X_transformed=X_transformed)
+                    feature_batch_count = _get_safe_fi_batch_count(
+                        X=X, num_features=num_features, X_transformed=X_transformed
+                    )
 
             # creating copy of original data N=feature_batch_count times for parallel processing
-            X_raw = pd.concat([X.copy() for _ in range(feature_batch_count)], ignore_index=True, sort=False).reset_index(drop=True)
+            X_raw = pd.concat(
+                [X.copy() for _ in range(feature_batch_count)],
+                ignore_index=True,
+                sort=False,
+            ).reset_index(drop=True)
 
         row_count = len(X)
 
         X_shuffled = shuffle_df_rows(X=X, seed=shuffle_repeat)
 
         for i in range(0, num_features, feature_batch_count):
-            parallel_computed_features = features[i:i + feature_batch_count]
+            parallel_computed_features = features[i : i + feature_batch_count]
 
             # if final iteration, leaving only necessary part of X_raw
             num_features_processing = len(parallel_computed_features)
@@ -555,14 +699,24 @@ def compute_permutation_feature_importance(X: pd.DataFrame, y: pd.Series, predic
             row_index = 0
             for feature in parallel_computed_features:
                 row_index_end = row_index + row_count
-                X_raw.loc[row_index:row_index_end - 1, feature] = X_shuffled[feature].values
+                X_raw.loc[row_index : row_index_end - 1, feature] = X_shuffled[
+                    feature
+                ].values
                 row_index = row_index_end
 
             if (num_features_processing < feature_batch_count) and final_iteration:
-                X_raw_transformed = X_raw.loc[:row_count * num_features_processing - 1]
-                X_raw_transformed = X_raw_transformed if transform_func is None else transform_func(X_raw_transformed, **transform_func_kwargs)
+                X_raw_transformed = X_raw.loc[: row_count * num_features_processing - 1]
+                X_raw_transformed = (
+                    X_raw_transformed
+                    if transform_func is None
+                    else transform_func(X_raw_transformed, **transform_func_kwargs)
+                )
             else:
-                X_raw_transformed = X_raw if transform_func is None else transform_func(X_raw, **transform_func_kwargs)
+                X_raw_transformed = (
+                    X_raw
+                    if transform_func is None
+                    else transform_func(X_raw, **transform_func_kwargs)
+                )
             y_pred = predict_func(X_raw_transformed, **predict_func_kwargs)
 
             row_index = 0
@@ -574,7 +728,7 @@ def compute_permutation_feature_importance(X: pd.DataFrame, y: pd.Series, predic
                 fi[feature] = score_baseline - score
 
                 # resetting to original values for processed feature
-                X_raw.loc[row_index:row_index_end - 1, feature] = X[feature].values
+                X_raw.loc[row_index : row_index_end - 1, feature] = X[feature].values
 
                 row_index = row_index_end
         fi_dict_list.append(fi)
@@ -582,9 +736,11 @@ def compute_permutation_feature_importance(X: pd.DataFrame, y: pd.Series, predic
         if time_limit is not None and shuffle_repeat != (num_shuffle_sets - 1):
             time_now = time.time()
             time_left = time_limit - (time_now - time_start)
-            time_permutation_average = (time_now - time_permutation_start) / (shuffle_repeat + 1)
+            time_permutation_average = (time_now - time_permutation_start) / (
+                shuffle_repeat + 1
+            )
             if time_left < (time_permutation_average * 1.1):
-                log_final_suffix = ' (Early stopping due to lack of time...)'
+                log_final_suffix = " (Early stopping due to lack of time...)"
                 break
 
     fi_list_dict = dict()
@@ -596,7 +752,10 @@ def compute_permutation_feature_importance(X: pd.DataFrame, y: pd.Series, predic
     fi_df = _compute_fi_with_stddev(fi_list_dict, importance_as_list=importance_as_list)
 
     if not silent:
-        logger.log(20, f'{log_prefix}\t{round(time.time() - time_start, 2)}s\t= Actual runtime (Completed {shuffle_repeats_completed} of {num_shuffle_sets} shuffle sets){log_final_suffix}')
+        logger.log(
+            20,
+            f"{log_prefix}\t{round(time.time() - time_start, 2)}s\t= Actual runtime (Completed {shuffle_repeats_completed} of {num_shuffle_sets} shuffle sets){log_final_suffix}",
+        )
 
     return fi_df
 
@@ -608,19 +767,24 @@ def _compute_fi_with_stddev(fi_list_dict: dict, importance_as_list=False) -> Dat
     fi_p_value = dict()
     fi_n = dict()
     for feature in features:
-        fi[feature], fi_stddev[feature], fi_p_value[feature], fi_n[feature] = _compute_mean_stddev_and_p_value(fi_list_dict[feature])
+        (
+            fi[feature],
+            fi_stddev[feature],
+            fi_p_value[feature],
+            fi_n[feature],
+        ) = _compute_mean_stddev_and_p_value(fi_list_dict[feature])
         if importance_as_list:
             fi[feature] = fi_list_dict[feature]
 
     fi = pd.Series(fi).sort_values(ascending=False)
     fi_stddev = pd.Series(fi_stddev)
     fi_p_value = pd.Series(fi_p_value)
-    fi_n = pd.Series(fi_n, dtype='int64')
+    fi_n = pd.Series(fi_n, dtype="int64")
 
-    fi_df = fi.to_frame(name='importance')
-    fi_df['stddev'] = fi_stddev
-    fi_df['p_value'] = fi_p_value
-    fi_df['n'] = fi_n
+    fi_df = fi.to_frame(name="importance")
+    fi_df["stddev"] = fi_stddev
+    fi_df["p_value"] = fi_p_value
+    fi_df["n"] = fi_n
     return fi_df
 
 
@@ -631,14 +795,20 @@ def _compute_mean_stddev_and_p_value(values: list):
     stddev = np.std(values, ddof=1) if n > 1 else np.nan
     if stddev != np.nan and stddev != 0:
         t_stat = mean / (stddev / math.sqrt(n))
-        p_value = scipy.stats.t.sf(t_stat, n-1)
+        p_value = scipy.stats.t.sf(t_stat, n - 1)
     elif stddev == 0:
         p_value = 0.5
 
     return mean, stddev, p_value, n
 
 
-def _get_safe_fi_batch_count(X, num_features, X_transformed=None, max_memory_ratio=0.2, max_feature_batch_count=200):
+def _get_safe_fi_batch_count(
+    X,
+    num_features,
+    X_transformed=None,
+    max_memory_ratio=0.2,
+    max_feature_batch_count=200,
+):
     # calculating maximum number of features that are safe to process in parallel
     X_size_bytes = sys.getsizeof(pickle.dumps(X, protocol=4))
     if X_transformed is not None:
@@ -661,16 +831,31 @@ def get_approximate_df_mem_usage(df: DataFrame, sample_ratio=0.2):
         sample_ratio = num_rows_sample / num_rows
         dtypes_raw = get_type_map_raw(df)
         columns_category = [column for column in df if dtypes_raw[column] == R_CATEGORY]
-        columns_inexact = [column for column in df if dtypes_raw[column] not in [R_INT, R_FLOAT, R_CATEGORY]]
+        columns_inexact = [
+            column
+            for column in df
+            if dtypes_raw[column] not in [R_INT, R_FLOAT, R_CATEGORY]
+        ]
         memory_usage = df.memory_usage()
         if columns_category:
             for column in columns_category:
                 num_categories = len(df[column].cat.categories)
                 num_categories_sample = math.ceil(sample_ratio * num_categories)
                 sample_ratio_cat = num_categories_sample / num_categories
-                memory_usage[column] = df[column].cat.codes.dtype.itemsize * num_rows + df[column].cat.categories[:num_categories_sample].memory_usage(deep=True) / sample_ratio_cat
+                memory_usage[column] = (
+                    df[column].cat.codes.dtype.itemsize * num_rows
+                    + df[column]
+                    .cat.categories[:num_categories_sample]
+                    .memory_usage(deep=True)
+                    / sample_ratio_cat
+                )
         if columns_inexact:
-            memory_usage_inexact = df[columns_inexact].head(num_rows_sample).memory_usage(deep=True)[columns_inexact] / sample_ratio
+            memory_usage_inexact = (
+                df[columns_inexact]
+                .head(num_rows_sample)
+                .memory_usage(deep=True)[columns_inexact]
+                / sample_ratio
+            )
             memory_usage = memory_usage_inexact.combine_first(memory_usage)
         return memory_usage
 
@@ -683,7 +868,7 @@ def get_gpu_free_memory():
     >>> print(get_gpu_free_memory)
     >>> [13861, 13859, 13859, 13863]
     """
-    _output_to_list = lambda x: x.decode('ascii').split('\n')[:-1]
+    _output_to_list = lambda x: x.decode("ascii").split("\n")[:-1]
 
     try:
         COMMAND = "nvidia-smi --query-gpu=memory.free --format=csv"

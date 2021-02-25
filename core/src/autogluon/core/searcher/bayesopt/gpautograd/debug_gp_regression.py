@@ -1,6 +1,6 @@
 import logging
 import time
-import numpy as  np
+import numpy as np
 from autograd.tracer import getval
 
 from .utils import param_to_pretty_string
@@ -15,7 +15,8 @@ class DebugGPRegression(object):
     criterion value afterwards. Storage is done to a rolling sequence
     of local files.
     """
-    def __init__(self, fname_msk='debug_gpr_{}', rolling_size=3):
+
+    def __init__(self, fname_msk="debug_gpr_{}", rolling_size=3):
         self.fname_msk = fname_msk
         self.rolling_size = rolling_size
         self.global_counter = 0
@@ -27,22 +28,20 @@ class DebugGPRegression(object):
         self.local_counter = 0
 
     def store_args(self, params, X, Y, param_encoding_pairs):
-        arg_dict = {
-            'features': getval(X),
-            'targets': getval(Y)}
+        arg_dict = {"features": getval(X), "targets": getval(Y)}
         for param in params:
             arg_dict[param.name] = getval(param.data())
         fname = self._filename()
-        np.save(fname + '_args.npy', arg_dict)
-        with open(fname + '_args.txt', 'w') as f:
+        np.save(fname + "_args.npy", arg_dict)
+        with open(fname + "_args.txt", "w") as f:
             self._write_meta(f)
             for param, encoding in param_encoding_pairs:
-                f.write(param_to_pretty_string(param, encoding) + '\n')
+                f.write(param_to_pretty_string(param, encoding) + "\n")
 
     def store_value(self, value):
         fname = self._filename()
-        with open(fname + '_value.txt', 'w') as f:
-            f.write('value = {}\n'.format(getval(value)))
+        with open(fname + "_value.txt", "w") as f:
+            f.write("value = {}\n".format(getval(value)))
             self._write_meta(f)
         # Advance counters
         self.global_counter += 1
@@ -52,7 +51,7 @@ class DebugGPRegression(object):
         return self.fname_msk.format(self.global_counter % self.rolling_size)
 
     def _write_meta(self, f):
-        f.write('optim_counter = {}\n'.format(self.optim_counter))
-        f.write('local_counter = {}\n'.format(self.local_counter))
-        f.write('global_counter = {}\n'.format(self.global_counter))
-        f.write('time = {}\n'.format(time.time()))
+        f.write("optim_counter = {}\n".format(self.optim_counter))
+        f.write("local_counter = {}\n".format(self.local_counter))
+        f.write("global_counter = {}\n".format(self.global_counter))
+        f.write("time = {}\n".format(time.time()))

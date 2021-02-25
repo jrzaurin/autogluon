@@ -22,7 +22,7 @@ class GaussianProcessModel(ABC):
     def recompute_states(self, X: anp.array, Y: anp.array):
         """Fixing GP hyperparameters and recompute the list of posterior states based on X and Y"""
         pass
-        
+
     def _check_and_format_input(self, u):
         """
         Check and massage the input to conform with the numerical type and context
@@ -30,7 +30,7 @@ class GaussianProcessModel(ABC):
         :param u: some np.ndarray
         """
         assert isinstance(u, anp.ndarray)
-        
+
         if u.ndim == 1:
             u = anp.reshape(u, (-1, 1))
         if u.dtype != DATA_TYPE:
@@ -47,7 +47,7 @@ class GaussianProcessModel(ABC):
         :return: posterior_means, posterior_variances
         """
         X_test = self._assert_check_xtest(X_test)
-        
+
         predictions = []
         for state in self.states:
             post_means, post_vars = state.predict(X_test)
@@ -60,8 +60,11 @@ class GaussianProcessModel(ABC):
     def _assert_check_xtest(self, X_test):
         assert self.states is not None, "Posterior state does not exist (run 'fit')"
         X_test = self._check_and_format_input(X_test)
-        assert X_test.shape[1] == self.states[0].num_features,             "X_test and X_train should have the same number of columns (received {}, expected {})".format(
-                X_test.shape[1], self.states[0].num_features)
+        assert (
+            X_test.shape[1] == self.states[0].num_features
+        ), "X_test and X_train should have the same number of columns (received {}, expected {})".format(
+            X_test.shape[1], self.states[0].num_features
+        )
         return X_test
 
     def multiple_targets(self):
@@ -85,8 +88,9 @@ class GaussianProcessModel(ABC):
         :return: Samples with shape (n, num_samples * n_states) or (n, m, num_samples * n_states) if m > 1
         """
         X_test = self._assert_check_xtest(X_test)
-        samples_list = [state.sample_marginals(X_test, num_samples)
-                        for state in self.states]
+        samples_list = [
+            state.sample_marginals(X_test, num_samples) for state in self.states
+        ]
         return _concatenate_samples(samples_list)
 
     def sample_joint(self, X_test, num_samples=1):
@@ -101,8 +105,9 @@ class GaussianProcessModel(ABC):
         :return: Samples, shape (n, num_samples)
         """
         X_test = self._assert_check_xtest(X_test)
-        samples_list = [state.sample_joint(X_test, num_samples)
-                        for state in self.states]
+        samples_list = [
+            state.sample_joint(X_test, num_samples) for state in self.states
+        ]
         return _concatenate_samples(samples_list)
 
 

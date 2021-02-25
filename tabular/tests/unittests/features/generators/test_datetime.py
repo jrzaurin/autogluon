@@ -1,4 +1,3 @@
-
 from autogluon.features.generators import DatetimeFeatureGenerator
 
 
@@ -9,14 +8,16 @@ def test_datetime_feature_generator(generator_helper, data_helper):
     generator = DatetimeFeatureGenerator()
 
     expected_feature_metadata_in_full = {
-        ('datetime', ()): ['datetime'],
-        ('object', ('datetime_as_object',)): ['datetime_as_object'],
+        ("datetime", ()): ["datetime"],
+        ("object", ("datetime_as_object",)): ["datetime_as_object"],
     }
 
-    expected_feature_metadata_full = {('int', ('datetime_as_int',)): [
-        'datetime',
-        'datetime_as_object',
-    ]}
+    expected_feature_metadata_full = {
+        ("int", ("datetime_as_int",)): [
+            "datetime",
+            "datetime_as_object",
+        ]
+    }
 
     expected_output_data_feat_datetime = [
         1533140820000000000,
@@ -27,7 +28,7 @@ def test_datetime_feature_generator(generator_helper, data_helper):
         -5364662400000000000,
         7289654340000000000,
         1597475520000000000,
-        1608257520000000000
+        1608257520000000000,
     ]
 
     # When
@@ -38,5 +39,7 @@ def test_datetime_feature_generator(generator_helper, data_helper):
         expected_feature_metadata_full=expected_feature_metadata_full,
     )
 
-    assert list(output_data['datetime'].values) == list(output_data['datetime_as_object'].values)
-    assert expected_output_data_feat_datetime == list(output_data['datetime'].values)
+    assert list(output_data["datetime"].values) == list(
+        output_data["datetime_as_object"].values
+    )
+    assert expected_output_data_feat_datetime == list(output_data["datetime"].values)

@@ -14,7 +14,7 @@ from gluoncv.model_zoo import get_model_list
 from ..configs.presets_configs import unpack, _check_gpu_memory_presets
 from ..utils import MXNetErrorCatcher
 
-__all__ = ['ImagePredictor']
+__all__ = ["ImagePredictor"]
 
 logger = logging.getLogger()  # return root logger
 
@@ -39,6 +39,7 @@ class ImagePredictor(object):
         If using logging, you can alternatively control amount of information printed via logger.setLevel(L),
         where L ranges from 0 to 50 (Note: higher values of L correspond to fewer print statements, opposite of verbosity levels)
     """
+
     # Dataset is a subclass of `pd.DataFrame`, with `image` and `label` columns.
     Dataset = _ImageClassification.Dataset
 
@@ -57,14 +58,16 @@ class ImagePredictor(object):
     def path(self):
         return self._log_dir
 
-    @unpack('image_predictor')
-    def fit(self,
-            train_data,
-            tuning_data=None,
-            time_limit='auto',
-            presets=None,
-            hyperparameters=None,
-            **kwargs):
+    @unpack("image_predictor")
+    def fit(
+        self,
+        train_data,
+        tuning_data=None,
+        time_limit="auto",
+        presets=None,
+        hyperparameters=None,
+        **kwargs,
+    ):
         """Automatic fit process for image prediction.
 
         Parameters
@@ -202,112 +205,131 @@ class ImagePredictor(object):
         """
         if self._problem_type is None:
             # options: multiclass
-            self._problem_type = 'multiclass'
+            self._problem_type = "multiclass"
         if self._eval_metric is None:
             # options: accuracy,
-            self._eval_metric = 'accuracy'
+            self._eval_metric = "accuracy"
 
         # init/validate kwargs
         kwargs = self._validate_kwargs(kwargs)
         # unpack
-        num_trials = kwargs['hyperparameter_tune_kwargs']['num_trials']
-        nthreads_per_trial = kwargs['nthreads_per_trial']
-        ngpus_per_trial = kwargs['ngpus_per_trial']
-        holdout_frac = kwargs['holdout_frac']
-        random_state = kwargs['random_state']
-        search_strategy = kwargs['hyperparameter_tune_kwargs']['search_strategy']
-        max_reward = kwargs['hyperparameter_tune_kwargs']['max_reward']
-        scheduler_options = kwargs['hyperparameter_tune_kwargs']['scheduler_options']
+        num_trials = kwargs["hyperparameter_tune_kwargs"]["num_trials"]
+        nthreads_per_trial = kwargs["nthreads_per_trial"]
+        ngpus_per_trial = kwargs["ngpus_per_trial"]
+        holdout_frac = kwargs["holdout_frac"]
+        random_state = kwargs["random_state"]
+        search_strategy = kwargs["hyperparameter_tune_kwargs"]["search_strategy"]
+        max_reward = kwargs["hyperparameter_tune_kwargs"]["max_reward"]
+        scheduler_options = kwargs["hyperparameter_tune_kwargs"]["scheduler_options"]
 
         log_level = verbosity2loglevel(self._verbosity)
         set_logger_verbosity(self._verbosity, logger=logger)
         if presets:
             if not isinstance(presets, list):
                 presets = [presets]
-            logger.log(20, f'Presets specified: {presets}')
+            logger.log(20, f"Presets specified: {presets}")
 
-        if time_limit == 'auto':
+        if time_limit == "auto":
             # no presets, no user specified time_limit
             time_limit = 7200
-            logger.log(20, f'`time_limit=auto` set to `time_limit={time_limit}`.')
+            logger.log(20, f"`time_limit=auto` set to `time_limit={time_limit}`.")
 
         use_rec = False
-        if isinstance(train_data, str) and train_data == 'imagenet':
-            logger.warning('ImageNet is a huge dataset which cannot be downloaded directly, ' +
-                           'please follow the data preparation tutorial in GluonCV.' +
-                           'The following record files(symlinks) will be used: \n' +
-                           'rec_train : ~/.mxnet/datasets/imagenet/rec/train.rec\n' +
-                           'rec_train_idx : ~/.mxnet/datasets/imagenet/rec/train.idx\n' +
-                           'rec_val : ~/.mxnet/datasets/imagenet/rec/val.rec\n' +
-                           'rec_val_idx : ~/.mxnet/datasets/imagenet/rec/val.idx\n')
-            train_data = pd.DataFrame({'image': [], 'label': []})
-            tuning_data = pd.DataFrame({'image': [], 'label': []})
+        if isinstance(train_data, str) and train_data == "imagenet":
+            logger.warning(
+                "ImageNet is a huge dataset which cannot be downloaded directly, "
+                + "please follow the data preparation tutorial in GluonCV."
+                + "The following record files(symlinks) will be used: \n"
+                + "rec_train : ~/.mxnet/datasets/imagenet/rec/train.rec\n"
+                + "rec_train_idx : ~/.mxnet/datasets/imagenet/rec/train.idx\n"
+                + "rec_val : ~/.mxnet/datasets/imagenet/rec/val.rec\n"
+                + "rec_val_idx : ~/.mxnet/datasets/imagenet/rec/val.idx\n"
+            )
+            train_data = pd.DataFrame({"image": [], "label": []})
+            tuning_data = pd.DataFrame({"image": [], "label": []})
             use_rec = True
         if isinstance(train_data, str):
             from d8.image_classification import Dataset as D8D
+
             names = D8D.list()
             if train_data.lower() in names:
                 train_data = D8D.get(train_data)
             else:
-                valid_names = '\n'.join(names)
-                raise ValueError(f'`train_data` {train_data} is not among valid list {valid_names}')
+                valid_names = "\n".join(names)
+                raise ValueError(
+                    f"`train_data` {train_data} is not among valid list {valid_names}"
+                )
             if tuning_data is None:
                 train_data, tuning_data = train_data.split(1 - holdout_frac)
         if isinstance(tuning_data, str):
             from d8.image_classification import Dataset as D8D
+
             names = D8D.list()
             if tuning_data.lower() in names:
                 tuning_data = D8D.get(tuning_data)
             else:
-                valid_names = '\n'.join(names)
-                raise ValueError(f'`tuning_data` {tuning_data} is not among valid list {valid_names}')
+                valid_names = "\n".join(names)
+                raise ValueError(
+                    f"`tuning_data` {tuning_data} is not among valid list {valid_names}"
+                )
         if self._classifier is not None:
             logging.getLogger("ImageClassificationEstimator").propagate = True
             self._classifier._logger.setLevel(log_level)
-            self._fit_summary = self._classifier.fit(train_data, tuning_data, 1 - holdout_frac, random_state, resume=False)
-            if hasattr(self._classifier, 'fit_history'):
-                self._fit_summary['fit_history'] = self._classifier.fit_history()
+            self._fit_summary = self._classifier.fit(
+                train_data, tuning_data, 1 - holdout_frac, random_state, resume=False
+            )
+            if hasattr(self._classifier, "fit_history"):
+                self._fit_summary["fit_history"] = self._classifier.fit_history()
             return self
 
         # new HPO task
         if time_limit is not None and num_trials is None:
             num_trials = 99999
         if time_limit is None and num_trials is None:
-            raise ValueError('`time_limit` and `num_trials` can not be `None` at the same time, '
-                             'otherwise the training will not be terminated gracefully.')
-        config={'log_dir': self._log_dir,
-                'num_trials': 99999 if num_trials is None else max(1, num_trials),
-                'time_limits': 2147483647 if time_limit is None else max(1, time_limit),
-                'search_strategy': search_strategy,
-                }
+            raise ValueError(
+                "`time_limit` and `num_trials` can not be `None` at the same time, "
+                "otherwise the training will not be terminated gracefully."
+            )
+        config = {
+            "log_dir": self._log_dir,
+            "num_trials": 99999 if num_trials is None else max(1, num_trials),
+            "time_limits": 2147483647 if time_limit is None else max(1, time_limit),
+            "search_strategy": search_strategy,
+        }
         if max_reward is not None:
-            config['max_reward'] = max_reward
+            config["max_reward"] = max_reward
         if nthreads_per_trial is not None:
-            config['nthreads_per_trial'] = nthreads_per_trial
+            config["nthreads_per_trial"] = nthreads_per_trial
         if ngpus_per_trial is not None:
-            config['ngpus_per_trial'] = ngpus_per_trial
+            config["ngpus_per_trial"] = ngpus_per_trial
         if isinstance(hyperparameters, dict):
-            if 'batch_size' in hyperparameters:
-                bs = hyperparameters['batch_size']
-                _check_gpu_memory_presets(bs, ngpus_per_trial, 4, 256)  # 256MB per sample
-            net = hyperparameters.pop('net', None)
+            if "batch_size" in hyperparameters:
+                bs = hyperparameters["batch_size"]
+                _check_gpu_memory_presets(
+                    bs, ngpus_per_trial, 4, 256
+                )  # 256MB per sample
+            net = hyperparameters.pop("net", None)
             if net is not None:
-                config['custom_net'] = net
-            optimizer = hyperparameters.pop('optimizer', None)
+                config["custom_net"] = net
+            optimizer = hyperparameters.pop("optimizer", None)
             if optimizer is not None:
-                config['custom_optimizer'] = optimizer
+                config["custom_optimizer"] = optimizer
             # check if hyperparameters overwriting existing config
             for k, v in hyperparameters.items():
                 if k in config:
-                    raise ValueError(f'Overwriting {k} = {config[k]} to {v} by hyperparameters is ambiguous.')
+                    raise ValueError(
+                        f"Overwriting {k} = {config[k]} to {v} by hyperparameters is ambiguous."
+                    )
             config.update(hyperparameters)
         if scheduler_options is not None:
             config.update(scheduler_options)
         if use_rec == True:
-            config['use_rec'] = True
+            config["use_rec"] = True
         # verbosity
         if log_level > logging.INFO:
-            logging.getLogger('gluoncv.auto.tasks.image_classification').propagate = False
+            logging.getLogger(
+                "gluoncv.auto.tasks.image_classification"
+            ).propagate = False
             logging.getLogger("ImageClassificationEstimator").propagate = False
             logging.getLogger("ImageClassificationEstimator").setLevel(log_level)
         task = _ImageClassification(config=config)
@@ -316,39 +338,53 @@ class ImagePredictor(object):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             with MXNetErrorCatcher() as err:
-                self._classifier = task.fit(train_data, tuning_data, 1 - holdout_frac, random_state)
+                self._classifier = task.fit(
+                    train_data, tuning_data, 1 - holdout_frac, random_state
+                )
             if err.exc_value is not None:
                 raise RuntimeError(err.exc_value + err.hint)
         self._classifier._logger.setLevel(log_level)
         self._classifier._logger.propagate = True
         self._fit_summary = task.fit_summary()
-        if hasattr(task, 'fit_history'):
-            self._fit_summary['fit_history'] = task.fit_history()
+        if hasattr(task, "fit_history"):
+            self._fit_summary["fit_history"] = task.fit_history()
         return self
 
     def _validate_kwargs(self, kwargs):
         """validate and initialize default kwargs"""
-        kwargs['holdout_frac'] = kwargs.get('holdout_frac', 0.1)
-        if not (0 < kwargs['holdout_frac'] < 1.0):
-            raise ValueError(f'Range error for `holdout_frac`, expected to be within range (0, 1), given {kwargs["holdout_frac"]}')
-        kwargs['random_state'] = kwargs.get('random_state', None)
-        kwargs['nthreads_per_trial'] = kwargs.get('nthreads_per_trial', None)
-        kwargs['ngpus_per_trial'] = kwargs.get('ngpus_per_trial', None)
-        if kwargs['ngpus_per_trial'] is not None and kwargs['ngpus_per_trial'] > 0:
+        kwargs["holdout_frac"] = kwargs.get("holdout_frac", 0.1)
+        if not (0 < kwargs["holdout_frac"] < 1.0):
+            raise ValueError(
+                f'Range error for `holdout_frac`, expected to be within range (0, 1), given {kwargs["holdout_frac"]}'
+            )
+        kwargs["random_state"] = kwargs.get("random_state", None)
+        kwargs["nthreads_per_trial"] = kwargs.get("nthreads_per_trial", None)
+        kwargs["ngpus_per_trial"] = kwargs.get("ngpus_per_trial", None)
+        if kwargs["ngpus_per_trial"] is not None and kwargs["ngpus_per_trial"] > 0:
             detected_gpu = get_gpu_count()
-            if detected_gpu < kwargs['ngpus_per_trial']:
-                raise ValueError(f"Insufficient detected # gpus {detected_gpu} vs requested {kwargs['ngpus_per_trial']}")
+            if detected_gpu < kwargs["ngpus_per_trial"]:
+                raise ValueError(
+                    f"Insufficient detected # gpus {detected_gpu} vs requested {kwargs['ngpus_per_trial']}"
+                )
         # tune kwargs
-        hpo_tune_args = kwargs.get('hyperparameter_tune_kwargs', {})
-        hpo_tune_args['num_trials'] = hpo_tune_args.get('num_trials', 1)
-        hpo_tune_args['search_strategy'] = hpo_tune_args.get('search_strategy', 'random')
-        if not hpo_tune_args['search_strategy'] in ('random', 'bayesopt', 'grid'):
-            raise ValueError(f"Invalid search strategy: {hpo_tune_args['search_strategy']}, supported: ('random', 'bayesopt', 'grid')")
-        hpo_tune_args['max_reward'] = hpo_tune_args.get('max_reward', None)
-        if hpo_tune_args['max_reward'] is not None and hpo_tune_args['max_reward'] < 0:
-            raise ValueError(f"Expected `max_reward` to be a positive float number between 0 and 1.0, given {hpo_tune_args['max_reward']}")
-        hpo_tune_args['scheduler_options'] = hpo_tune_args.get('scheduler_options', None)
-        kwargs['hyperparameter_tune_kwargs'] = hpo_tune_args
+        hpo_tune_args = kwargs.get("hyperparameter_tune_kwargs", {})
+        hpo_tune_args["num_trials"] = hpo_tune_args.get("num_trials", 1)
+        hpo_tune_args["search_strategy"] = hpo_tune_args.get(
+            "search_strategy", "random"
+        )
+        if not hpo_tune_args["search_strategy"] in ("random", "bayesopt", "grid"):
+            raise ValueError(
+                f"Invalid search strategy: {hpo_tune_args['search_strategy']}, supported: ('random', 'bayesopt', 'grid')"
+            )
+        hpo_tune_args["max_reward"] = hpo_tune_args.get("max_reward", None)
+        if hpo_tune_args["max_reward"] is not None and hpo_tune_args["max_reward"] < 0:
+            raise ValueError(
+                f"Expected `max_reward` to be a positive float number between 0 and 1.0, given {hpo_tune_args['max_reward']}"
+            )
+        hpo_tune_args["scheduler_options"] = hpo_tune_args.get(
+            "scheduler_options", None
+        )
+        kwargs["hyperparameter_tune_kwargs"] = hpo_tune_args
         return kwargs
 
     def predict_proba(self, data, as_pandas=True):
@@ -371,9 +407,9 @@ class ImagePredictor(object):
             the returned dataframe will contain `images` column, and all results are concatenated.
         """
         if self._classifier is None:
-            raise RuntimeError('Classifier is not initialized, try `fit` first.')
+            raise RuntimeError("Classifier is not initialized, try `fit` first.")
         proba = self._classifier.predict(data)
-        if 'image' in proba.columns:
+        if "image" in proba.columns:
             ret = proba.groupby(["image"]).agg(list)
         ret = proba
         if as_pandas:
@@ -400,11 +436,13 @@ class ImagePredictor(object):
             the returned dataframe will contain `images` column, and all results are concatenated.
         """
         if self._classifier is None:
-            raise RuntimeError('Classifier is not initialized, try `fit` first.')
+            raise RuntimeError("Classifier is not initialized, try `fit` first.")
         proba = self._classifier.predict(data)
-        if 'image' in proba.columns:
+        if "image" in proba.columns:
             # multiple images
-            ret = proba.loc[proba.groupby(["image"])["score"].idxmax()].reset_index(drop=True)
+            ret = proba.loc[proba.groupby(["image"])["score"].idxmax()].reset_index(
+                drop=True
+            )
         else:
             # single image
             ret = proba.loc[[proba["score"].idxmax()]]
@@ -432,7 +470,7 @@ class ImagePredictor(object):
             the returned dataframe will contain `images` column, and all results are concatenated.
         """
         if self._classifier is None:
-            raise RuntimeError('Classifier is not initialized, try `fit` first.')
+            raise RuntimeError("Classifier is not initialized, try `fit` first.")
         ret = self._classifier.predict_feature(data)
         if as_pandas:
             return ret
@@ -448,7 +486,7 @@ class ImagePredictor(object):
             The validation data.
         """
         if self._classifier is None:
-            raise RuntimeError('Classifier not initialized, try `fit` first.')
+            raise RuntimeError("Classifier not initialized, try `fit` first.")
         return self._classifier.evaluate(data)
 
     def fit_summary(self):
@@ -473,8 +511,8 @@ class ImagePredictor(object):
 
         """
         if path is None:
-            path = os.path.join(self.path, 'image_predictor.ag')
-        with open(path, 'wb') as fid:
+            path = os.path.join(self.path, "image_predictor.ag")
+        with open(path, "wb") as fid:
             pickle.dump(self, fid)
 
     @classmethod
@@ -494,8 +532,8 @@ class ImagePredictor(object):
 
         """
         if os.path.isdir(path):
-            path = os.path.join(path, 'image_predictor.ag')
-        with open(path, 'rb') as fid:
+            path = os.path.join(path, "image_predictor.ag")
+        with open(path, "rb") as fid:
             obj = pickle.load(fid)
         obj._verbosity = verbosity
         return obj
@@ -516,12 +554,34 @@ class ImagePredictor(object):
 
 def _get_supported_models():
     all_models = get_model_list()
-    blacklist = ['ssd', 'faster_rcnn', 'mask_rcnn', 'fcn', 'deeplab',
-                 'psp', 'icnet', 'fastscnn', 'danet', 'yolo', 'pose',
-                 'center_net', 'siamrpn', 'monodepth',
-                 'ucf101', 'kinetics', 'voc', 'coco', 'citys', 'mhpv1',
-                 'ade', 'hmdb51', 'sthsth', 'otb']
+    blacklist = [
+        "ssd",
+        "faster_rcnn",
+        "mask_rcnn",
+        "fcn",
+        "deeplab",
+        "psp",
+        "icnet",
+        "fastscnn",
+        "danet",
+        "yolo",
+        "pose",
+        "center_net",
+        "siamrpn",
+        "monodepth",
+        "ucf101",
+        "kinetics",
+        "voc",
+        "coco",
+        "citys",
+        "mhpv1",
+        "ade",
+        "hmdb51",
+        "sthsth",
+        "otb",
+    ]
     cls_models = [m for m in all_models if not any(x in m for x in blacklist)]
     return cls_models
+
 
 _SUPPORTED_MODELS = _get_supported_models()

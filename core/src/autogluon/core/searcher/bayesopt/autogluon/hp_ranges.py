@@ -7,9 +7,12 @@ from ..datatypes.hp_ranges import HyperparameterRanges
 
 
 class HyperparameterRanges_CS(HyperparameterRanges):
-    def __init__(self, config_space: CS.ConfigurationSpace,
-                 name_last_pos: str = None,
-                 value_for_last_pos = None):
+    def __init__(
+        self,
+        config_space: CS.ConfigurationSpace,
+        name_last_pos: str = None,
+        value_for_last_pos=None,
+    ):
         """
         If name_last_pos is given, the hyperparameter of that name is assigned
         the final position in the vector returned by to_ndarray. This can be
@@ -53,8 +56,9 @@ class HyperparameterRanges_CS(HyperparameterRanges):
                     categ_trg.append(trg_pos)
                     categ_card.append(card)
                     trg_pos += card
-            elif isinstance(hp, CS.UniformIntegerHyperparameter) or \
-                    isinstance(hp, CS.UniformFloatHyperparameter):
+            elif isinstance(hp, CS.UniformIntegerHyperparameter) or isinstance(
+                hp, CS.UniformFloatHyperparameter
+            ):
                 if hp.name == name_last_pos:
                     assert append_at_end is None
                     append_at_end = (src_pos, 1, False)
@@ -66,7 +70,8 @@ class HyperparameterRanges_CS(HyperparameterRanges):
                 raise NotImplementedError(
                     "We only support hyperparameters of type "
                     "CategoricalHyperparameter, UniformIntegerHyperparameter, "
-                    "UniformFloatHyperparameter")
+                    "UniformFloatHyperparameter"
+                )
         if append_at_end is not None:
             if append_at_end[2]:
                 categ_src.append(append_at_end[0])
@@ -83,7 +88,8 @@ class HyperparameterRanges_CS(HyperparameterRanges):
         self.categ_card = np.array(categ_card, dtype=np.int64)
         self._ndarray_size = trg_pos
         self.keys_sorted = sorted(
-            [hp.name for hp in config_space.get_hyperparameters()])
+            [hp.name for hp in config_space.get_hyperparameters()]
+        )
 
     def to_ndarray(self, cand_tuple: Candidate) -> np.ndarray:
         assert isinstance(cand_tuple, CS.Configuration)
@@ -92,38 +98,42 @@ class HyperparameterRanges_CS(HyperparameterRanges):
         # https://wesmckinney.com/blog/numpy-indexing-peculiarities/
         # take, put much faster than []
         trgvec.put(
-            self.numer_trg, srcvec.take(self.numer_src, mode='clip'),
-            mode='clip')
-        relpos = srcvec.take(self.categ_src, mode='clip').astype(np.int64)
-        trgvec.put(self.categ_trg + relpos, [1.], mode='clip')
+            self.numer_trg, srcvec.take(self.numer_src, mode="clip"), mode="clip"
+        )
+        relpos = srcvec.take(self.categ_src, mode="clip").astype(np.int64)
+        trgvec.put(self.categ_trg + relpos, [1.0], mode="clip")
         return trgvec
 
     def ndarray_size(self) -> int:
         return self._ndarray_size
 
     def from_ndarray(self, cand_ndarray: np.ndarray) -> Candidate:
-        assert cand_ndarray.size == self._ndarray_size, \
-            "Internal vector [{}] must have size {}".format(
-                cand_ndarray, self._ndarray_size)
+        assert (
+            cand_ndarray.size == self._ndarray_size
+        ), "Internal vector [{}] must have size {}".format(
+            cand_ndarray, self._ndarray_size
+        )
         cand_ndarray = cand_ndarray.reshape((-1,))
-        assert cand_ndarray.min() >= 0. and cand_ndarray.max() <= 1., \
-            "Internal vector [{}] must have entries in [0, 1]".format(
-                cand_ndarray)
+        assert (
+            cand_ndarray.min() >= 0.0 and cand_ndarray.max() <= 1.0
+        ), "Internal vector [{}] must have entries in [0, 1]".format(cand_ndarray)
         # Deal with categoricals by using argmax
         srcvec = np.zeros(self.__len__(), dtype=cand_ndarray.dtype)
         srcvec.put(
-            self.numer_src, cand_ndarray.take(self.numer_trg, mode='clip'),
-            mode='clip')
+            self.numer_src, cand_ndarray.take(self.numer_trg, mode="clip"), mode="clip"
+        )
         for srcpos, trgpos, card in zip(
-                self.categ_src, self.categ_trg, self.categ_card):
-            maxpos = cand_ndarray[trgpos:(trgpos + card)].argmax()
+            self.categ_src, self.categ_trg, self.categ_card
+        ):
+            maxpos = cand_ndarray[trgpos : (trgpos + card)].argmax()
             srcvec[srcpos] = maxpos
         # Rest is dealt with by CS.Configuration
         return CS.Configuration(self.config_space, vector=srcvec)
 
     def is_attribute_fixed(self):
-        return (self.name_last_pos is not None) and \
-               (self.value_for_last_pos is not None)
+        return (self.name_last_pos is not None) and (
+            self.value_for_last_pos is not None
+        )
 
     def _fix_attribute_value(self, name):
         return self.is_attribute_fixed() and name == self.name_last_pos
@@ -134,16 +144,19 @@ class HyperparameterRanges_CS(HyperparameterRanges):
         for hp in self.config_space.get_hyperparameters():
             if isinstance(hp, CS.CategoricalHyperparameter):
                 if not self._fix_attribute_value(hp.name):
-                    bound = [(0., 1.)] * len(hp.choices)
+                    bound = [(0.0, 1.0)] * len(hp.choices)
                 else:
-                    bound = [(0., 0.)] * len(hp.choices)
-                    bound[int(self.value_for_last_pos)] = (1., 1.)
+                    bound = [(0.0, 0.0)] * len(hp.choices)
+                    bound[int(self.value_for_last_pos)] = (1.0, 1.0)
             else:
                 if not self._fix_attribute_value(hp.name):
-                    bound = [(0., 1.)]
+                    bound = [(0.0, 1.0)]
                 else:
-                    val_int = float(hp._inverse_transform(
-                        np.array([self.value_for_last_pos])).item())
+                    val_int = float(
+                        hp._inverse_transform(
+                            np.array([self.value_for_last_pos])
+                        ).item()
+                    )
                     bound = [(val_int, val_int)]
             if hp.name == self.name_last_pos:
                 final_bound = bound
@@ -166,8 +179,7 @@ class HyperparameterRanges_CS(HyperparameterRanges):
             rnd_config = self._transform_config(rnd_config)
         return rnd_config
 
-    def random_candidates(
-            self, random_state, num_configs: int) -> List[Candidate]:
+    def random_candidates(self, random_state, num_configs: int) -> List[Candidate]:
         self.config_space.random = random_state  # Not great...
         rnd_configs = self.config_space.sample_configuration(num_configs)
         if num_configs == 1:
@@ -177,8 +189,7 @@ class HyperparameterRanges_CS(HyperparameterRanges):
         return rnd_configs
 
     def __repr__(self) -> str:
-        return "{}{}".format(
-            self.__class__.__name__, repr(self.config_space))
+        return "{}{}".format(self.__class__.__name__, repr(self.config_space))
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, HyperparameterRanges_CS):
@@ -194,8 +205,7 @@ class HyperparameterRanges_CS(HyperparameterRanges):
     def hp_ranges(self) -> List[CS.hyperparameters.Hyperparameter]:
         return self.config_space.get_hyperparameters()
 
-    def filter_for_last_pos_value(
-            self, candidates: List[Candidate]) -> List[Candidate]:
+    def filter_for_last_pos_value(self, candidates: List[Candidate]) -> List[Candidate]:
         """
         If is_attribute_fixed, the candidates list is filtered by removing
         entries whose name_last_pos attribute value is different from
@@ -203,9 +213,10 @@ class HyperparameterRanges_CS(HyperparameterRanges):
 
         """
         if self.is_attribute_fixed():
+
             def filter_pred(x: CS.Configuration) -> bool:
                 x_dct = x.get_dictionary()
-                return (x_dct[self.name_last_pos] == self.value_for_last_pos)
+                return x_dct[self.name_last_pos] == self.value_for_last_pos
 
             candidates = list(filter(filter_pred, candidates))
         return candidates
@@ -221,8 +232,9 @@ class HyperparameterRanges_CS(HyperparameterRanges):
             assert isinstance(config, dict)
         return tuple(config[k] for k in self.keys_sorted)
 
-    def tuple_to_config(self, config_tpl: tuple, as_dict: bool = False) -> \
-            Union[CS.Configuration, dict]:
+    def tuple_to_config(
+        self, config_tpl: tuple, as_dict: bool = False
+    ) -> Union[CS.Configuration, dict]:
         config = dict(zip(self.keys_sorted, config_tpl))
         if not as_dict:
             config = CS.Configuration(self.config_space, values=config)

@@ -3,7 +3,6 @@ import numpy as np
 import ConfigSpace as CS
 
 
-
 # Allows underlying BO code to be used with different basic types for a
 # candidate
 Hyperparameter = Union[str, int, float]
@@ -22,6 +21,7 @@ class StateIdAndCandidate(NamedTuple):
     """
     Just used in utils/test_objects.py, could probably be removed
     """
+
     state_id: str
     candidate: Candidate
 
@@ -38,6 +38,7 @@ class PendingEvaluation(object):
 
     The minimum information is the candidate which has been queried.
     """
+
     def __init__(self, candidate: Candidate):
         super(PendingEvaluation, self).__init__()
         self._candidate = candidate
@@ -53,14 +54,14 @@ class FantasizedPendingEvaluation(PendingEvaluation):
     also called "fantasies".
 
     """
+
     def __init__(self, candidate: Candidate, fantasies: Dict[str, np.ndarray]):
         super(FantasizedPendingEvaluation, self).__init__(candidate)
-        fantasy_sizes = [
-            fantasy_values.size for fantasy_values in fantasies.values()]
-        assert all(fantasy_size > 0 for fantasy_size in fantasy_sizes), \
-            "fantasies must be non-empty"
-        assert len(set(fantasy_sizes)) == 1, \
-            "fantasies must all have the same length"
+        fantasy_sizes = [fantasy_values.size for fantasy_values in fantasies.values()]
+        assert all(
+            fantasy_size > 0 for fantasy_size in fantasy_sizes
+        ), "fantasies must be non-empty"
+        assert len(set(fantasy_sizes)) == 1, "fantasies must all have the same length"
         self._fantasies = fantasies.copy()
 
     @property

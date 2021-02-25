@@ -20,7 +20,9 @@ class SupervisedPretext(nn.Module):
     def __init__(self, problem_type, device):
         super().__init__()
         self.device = device
-        self.loss_funct = nn.MSELoss() if problem_type == REGRESSION else nn.CrossEntropyLoss()
+        self.loss_funct = (
+            nn.MSELoss() if problem_type == REGRESSION else nn.CrossEntropyLoss()
+        )
 
     def forward(self, out, target):
         loss = self.loss_funct(out, target)
@@ -58,7 +60,14 @@ class BERTPretext(nn.Module):
             predict the pretext label.
     """
 
-    def __init__(self, cat_feat_origin_cards, device, hidden_dim, replacement_noise='random', p_replace=0.3):
+    def __init__(
+        self,
+        cat_feat_origin_cards,
+        device,
+        hidden_dim,
+        replacement_noise="random",
+        p_replace=0.3,
+    ):
         super().__init__()
         self.cat_feat_origin_cards = cat_feat_origin_cards
         self.device = device
@@ -74,7 +83,13 @@ class BERTPretext(nn.Module):
             self.predicters.append(lin)
 
     def forward(self, out, target):
-        prob = torch.cat([self.predicters[col](out[:, col, :]).unsqueeze(1) for col in range(self.n_cat_feats)], dim=1)
+        prob = torch.cat(
+            [
+                self.predicters[col](out[:, col, :]).unsqueeze(1)
+                for col in range(self.n_cat_feats)
+            ],
+            dim=1,
+        )
         prob = prob.view(-1, 2)
         target = target.view(-1)
 
@@ -91,57 +106,97 @@ class BERTPretext(nn.Module):
 
         orig_cat_feats = deepcopy(cat_feats.detach())
 
-        if self.replacement_noise == 'swap':
+        if self.replacement_noise == "swap":
             n_cat = cat_feats.shape[1]
-            cols_to_shuffle = np.random.choice(n_cat, int(self.p_replace * n_cat), replace=False)
+            cols_to_shuffle = np.random.choice(
+                n_cat, int(self.p_replace * n_cat), replace=False
+            )
             for col in cols_to_shuffle:
-                cat_feats[:, col] = cat_feats[:, col][torch.randperm(cat_feats.shape[0])]
+                cat_feats[:, col] = cat_feats[:, col][
+                    torch.randperm(cat_feats.shape[0])
+                ]
 
-        elif self.replacement_noise == 'random':
-            locs_to_replace = torch.empty_like(cat_feats, dtype=float).uniform_() < self.p_replace
-            col_cardinalities = torch.LongTensor([i[1] for i in self.cat_feat_origin_cards]).to(cat_feats)
+        elif self.replacement_noise == "random":
+            locs_to_replace = (
+                torch.empty_like(cat_feats, dtype=float).uniform_() < self.p_replace
+            )
+            col_cardinalities = torch.LongTensor(
+                [i[1] for i in self.cat_feat_origin_cards]
+            ).to(cat_feats)
             col_cardinalities = col_cardinalities.unsqueeze(0).expand_as(cat_feats)
 
             unif = torch.rand(cat_feats.shape, device=col_cardinalities.device)
-            random_feats = (unif * col_cardinalities).floor().to(torch.int64) + 1  # + 1 since 0 is the padding value
+            random_feats = (unif * col_cardinalities).floor().to(
+                torch.int64
+            ) + 1  # + 1 since 0 is the padding value
 
-            extra_replace = torch.mul((cat_feats == random_feats).to(int), locs_to_replace.to(int)).to(torch.bool)
+            extra_replace = torch.mul(
+                (cat_feats == random_feats).to(int), locs_to_replace.to(int)
+            ).to(torch.bool)
             cat_feats[locs_to_replace] = random_feats[locs_to_replace]
 
-            assert torch.all(cat_feats[extra_replace] == orig_cat_feats[extra_replace]).item() is True
+            assert (
+                torch.all(
+                    cat_feats[extra_replace] == orig_cat_feats[extra_replace]
+                ).item()
+                is True
+            )
             extra_plus1 = cat_feats[extra_replace] + 1
             extra_minus1 = cat_feats[extra_replace] - 1
             extra_zero_padd_idx = extra_minus1 == 0
             extra_minus1[extra_zero_padd_idx] = extra_plus1[extra_zero_padd_idx]
 
             cat_feats[extra_replace] = extra_minus1
-            assert torch.all(~(cat_feats[extra_replace] == orig_cat_feats[extra_replace])).item() is True
+            assert (
+                torch.all(
+                    ~(cat_feats[extra_replace] == orig_cat_feats[extra_replace])
+                ).item()
+                is True
+            )
 
-        elif self.replacement_noise == 'low_rank':
+        elif self.replacement_noise == "low_rank":
             assert self.p_replace + 0.2 <= 1, "p_replace too big, lower it!"
-            weights = torch.tensor([self.p_replace, 0.1, 0.9 - self.p_replace],
-                                   dtype=torch.float)  # 0=pad, 1=replace with random value, 2=dont change
+            weights = torch.tensor(
+                [self.p_replace, 0.1, 0.9 - self.p_replace], dtype=torch.float
+            )  # 0=pad, 1=replace with random value, 2=dont change
 
-            locs_to_change = torch.multinomial(weights, np.prod(cat_feats.shape), replacement=True).view(
-                cat_feats.shape)
-            col_cardinalities = torch.LongTensor([i[1] for i in self.cat_feat_origin_cards]).to(cat_feats)
+            locs_to_change = torch.multinomial(
+                weights, np.prod(cat_feats.shape), replacement=True
+            ).view(cat_feats.shape)
+            col_cardinalities = torch.LongTensor(
+                [i[1] for i in self.cat_feat_origin_cards]
+            ).to(cat_feats)
             col_cardinalities = col_cardinalities.unsqueeze(0).expand_as(cat_feats)
 
             unif = torch.rand(cat_feats.shape, device=col_cardinalities.device)
-            random_feats = (unif * col_cardinalities).floor().to(torch.int64) + 1  # + 1 since 0 is the padding value
+            random_feats = (unif * col_cardinalities).floor().to(
+                torch.int64
+            ) + 1  # + 1 since 0 is the padding value
 
-            extra_replace = torch.mul((cat_feats == random_feats).to(int), (locs_to_change == 1).to(int)).to(torch.bool)
+            extra_replace = torch.mul(
+                (cat_feats == random_feats).to(int), (locs_to_change == 1).to(int)
+            ).to(torch.bool)
             cat_feats[locs_to_change == 1] = random_feats[locs_to_change == 1]
             cat_feats[locs_to_change == 0] = 0
 
-            assert torch.all(cat_feats[extra_replace] == orig_cat_feats[extra_replace]).item() is True
+            assert (
+                torch.all(
+                    cat_feats[extra_replace] == orig_cat_feats[extra_replace]
+                ).item()
+                is True
+            )
             extra_plus1 = cat_feats[extra_replace] + 1
             extra_minus1 = cat_feats[extra_replace] - 1
             extra_zero_padd_idx = extra_minus1 == 0
             extra_minus1[extra_zero_padd_idx] = extra_plus1[extra_zero_padd_idx]
 
             cat_feats[extra_replace] = extra_minus1
-            assert torch.all(~(cat_feats[extra_replace] == orig_cat_feats[extra_replace])).item() is True
+            assert (
+                torch.all(
+                    ~(cat_feats[extra_replace] == orig_cat_feats[extra_replace])
+                ).item()
+                is True
+            )
 
         pretext_label = (cat_feats != orig_cat_feats).long()
         pretext_data = cat_feats

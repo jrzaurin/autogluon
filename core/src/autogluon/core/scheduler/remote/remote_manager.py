@@ -6,7 +6,7 @@ import multiprocessing as mp
 from .remote import Remote
 from ...utils import warning_filter
 
-__all__ = ['RemoteManager']
+__all__ = ["RemoteManager"]
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +15,10 @@ def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         # doesn't even have to be reachable
-        s.connect(('10.255.255.255', 1))
+        s.connect(("10.255.255.255", 1))
         IP = s.getsockname()[0]
     except:
-        IP = '127.0.0.1'
+        IP = "127.0.0.1"
     finally:
         s.close()
     return IP
@@ -27,9 +27,10 @@ def get_ip():
 class RemoteManager(object):
     NODES = {}
     LOCK = mp.Lock()
-    PORT_ID = mp.Value('i', 8700)
+    PORT_ID = mp.Value("i", 8700)
     MASTER_IP = None
     __instance = None
+
     def __new__(cls):
         # Singleton
         if cls.__instance is None:
@@ -72,7 +73,7 @@ class RemoteManager(object):
         remotes = []
         for node_ip in ip_addrs:
             if node_ip in cls.NODES.keys():
-                logger.warning('Already added remote {}'.format(node_ip))
+                logger.warning("Already added remote {}".format(node_ip))
                 continue
             port = cls.get_port_id()
             remote = Remote(node_ip, port)
@@ -80,7 +81,7 @@ class RemoteManager(object):
                 cls.NODES[node_ip] = remote
             remotes.append(remote)
         return remotes
-    
+
     @classmethod
     def shutdown(cls):
         for node in cls.NODES.values():
@@ -102,8 +103,8 @@ class RemoteManager(object):
             node.shutdown()
 
     def __repr__(self):
-        reprstr = self.__class__.__name__ + '(\n'
+        reprstr = self.__class__.__name__ + "(\n"
         for node in self.NODES.values():
-           reprstr += '{}, \n'.format(node)
-        reprstr += ')\n'
+            reprstr += "{}, \n".format(node)
+        reprstr += ")\n"
         return reprstr

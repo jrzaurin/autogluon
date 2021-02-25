@@ -7,19 +7,38 @@ import ConfigSpace as CS
 from .debug_log import DebugLogPrinter
 from .gp_profiling import GPMXNetSimpleProfiler
 from .hp_ranges import HyperparameterRanges_CS
-from ..datatypes.common import CandidateEvaluation, Candidate, candidate_for_print, PendingEvaluation
+from ..datatypes.common import (
+    CandidateEvaluation,
+    Candidate,
+    candidate_for_print,
+    PendingEvaluation,
+)
 from ..datatypes.hp_ranges import HyperparameterRanges
 from ..datatypes.tuning_job_state import TuningJobState
 from ..models.gp_model import GaussProcSurrogateModel, GPModel
 from ..models.gpmodel_skipopt import SkipOptimizationPredicate
-from ..models.gpmodel_transformers import GPModelPendingCandidateStateTransformer, GPModelArgs
-from ..tuning_algorithms.base_classes import LocalOptimizer, AcquisitionFunction, ScoringFunction
+from ..models.gpmodel_transformers import (
+    GPModelPendingCandidateStateTransformer,
+    GPModelArgs,
+)
+from ..tuning_algorithms.base_classes import (
+    LocalOptimizer,
+    AcquisitionFunction,
+    ScoringFunction,
+)
 from ..tuning_algorithms.bo_algorithm import BayesianOptimizationAlgorithm
 from ..tuning_algorithms.bo_algorithm_components import IndependentThompsonSampling
-from ..tuning_algorithms.common import RandomStatefulCandidateGenerator, compute_blacklisted_candidates
-from ..tuning_algorithms.default_algorithm import dictionarize_objective, \
-    DEFAULT_METRIC, DEFAULT_LOCAL_OPTIMIZER_CLASS, \
-    DEFAULT_NUM_INITIAL_CANDIDATES, DEFAULT_NUM_INITIAL_RANDOM_EVALUATIONS
+from ..tuning_algorithms.common import (
+    RandomStatefulCandidateGenerator,
+    compute_blacklisted_candidates,
+)
+from ..tuning_algorithms.default_algorithm import (
+    dictionarize_objective,
+    DEFAULT_METRIC,
+    DEFAULT_LOCAL_OPTIMIZER_CLASS,
+    DEFAULT_NUM_INITIAL_CANDIDATES,
+    DEFAULT_NUM_INITIAL_RANDOM_EVALUATIONS,
+)
 from ..utils.duplicate_detector import DuplicateDetectorIdentical
 
 logger = logging.getLogger(__name__)
@@ -36,17 +55,16 @@ class MapReward(NamedTuple):
 
 
 def accumulate_profiling_record(
-        cum_records: dict, profiler: GPMXNetSimpleProfiler, pick_random: bool):
+    cum_records: dict, profiler: GPMXNetSimpleProfiler, pick_random: bool
+):
     # Pull out profiling data from this block
     block_id = profiler.id_counter - 1
-    curr_record = {
-        r.tag: r.duration for r in profiler.records
-        if r.id == block_id}
+    curr_record = {r.tag: r.duration for r in profiler.records if r.id == block_id}
     if pick_random:
-        curr_record['num_random'] = 1
-        curr_record['total_all'] = curr_record['random']
+        curr_record["num_random"] = 1
+        curr_record["total_all"] = curr_record["random"]
     else:
-        curr_record['num_model'] = 1
+        curr_record["num_model"] = 1
     # Sum up entries
     for k, v in curr_record.items():
         if k in cum_records:
@@ -55,19 +73,19 @@ def accumulate_profiling_record(
             cum_records[k] = v
 
 
-SUPPORTED_INITIAL_SCORING = {
-    'thompson_indep',
-    'acq_func'}
+SUPPORTED_INITIAL_SCORING = {"thompson_indep", "acq_func"}
 
 
-DEFAULT_INITIAL_SCORING = 'thompson_indep'
+DEFAULT_INITIAL_SCORING = "thompson_indep"
 
 
 def create_initial_candidates_scorer(
-        initial_scoring: str, model: GaussProcSurrogateModel,
-        acquisition_class: Type[AcquisitionFunction],
-        random_state: np.random.RandomState) -> ScoringFunction:
-    if initial_scoring == 'thompson_indep':
+    initial_scoring: str,
+    model: GaussProcSurrogateModel,
+    acquisition_class: Type[AcquisitionFunction],
+    random_state: np.random.RandomState,
+) -> ScoringFunction:
+    if initial_scoring == "thompson_indep":
         return IndependentThompsonSampling(model, random_state=random_state)
     else:
         return acquisition_class(model)
@@ -77,9 +95,9 @@ def check_initial_candidates_scorer(initial_scoring: str) -> str:
     if initial_scoring is None:
         return DEFAULT_INITIAL_SCORING
     else:
-        assert initial_scoring in SUPPORTED_INITIAL_SCORING, \
-            "initial_scoring = '{}' is not supported".format(
-                initial_scoring)
+        assert (
+            initial_scoring in SUPPORTED_INITIAL_SCORING
+        ), "initial_scoring = '{}' is not supported".format(initial_scoring)
         return initial_scoring
 
 
@@ -89,21 +107,26 @@ class GPFIFOSearcher(object):
     FIFO scheduler.
 
     """
+
     def __init__(
-            self, hp_ranges: HyperparameterRanges, random_seed: int,
-            gpmodel: GPModel, model_args: GPModelArgs,
-            map_reward: MapReward,
-            acquisition_class: Type[AcquisitionFunction],
-            init_state: TuningJobState = None,
-            local_minimizer_class: Type[LocalOptimizer] = DEFAULT_LOCAL_OPTIMIZER_CLASS,
-            skip_optimization: SkipOptimizationPredicate = None,
-            num_initial_candidates: int = DEFAULT_NUM_INITIAL_CANDIDATES,
-            num_initial_random_choices: int = DEFAULT_NUM_INITIAL_RANDOM_EVALUATIONS,
-            initial_scoring: Optional[str] = None,
-            profiler: Optional[GPMXNetSimpleProfiler] = None,
-            first_is_default: bool = True,
-            debug_log: Optional[DebugLogPrinter] = None,
-            cost_metric_name: Optional[str] = None):
+        self,
+        hp_ranges: HyperparameterRanges,
+        random_seed: int,
+        gpmodel: GPModel,
+        model_args: GPModelArgs,
+        map_reward: MapReward,
+        acquisition_class: Type[AcquisitionFunction],
+        init_state: TuningJobState = None,
+        local_minimizer_class: Type[LocalOptimizer] = DEFAULT_LOCAL_OPTIMIZER_CLASS,
+        skip_optimization: SkipOptimizationPredicate = None,
+        num_initial_candidates: int = DEFAULT_NUM_INITIAL_CANDIDATES,
+        num_initial_random_choices: int = DEFAULT_NUM_INITIAL_RANDOM_EVALUATIONS,
+        initial_scoring: Optional[str] = None,
+        profiler: Optional[GPMXNetSimpleProfiler] = None,
+        first_is_default: bool = True,
+        debug_log: Optional[DebugLogPrinter] = None,
+        cost_metric_name: Optional[str] = None,
+    ):
         """
         Note that the SurrogateModel is created on demand (by the state
         transformer) in get_config, along with components needed for the BO
@@ -151,43 +174,51 @@ class GPFIFOSearcher(object):
                 hp_ranges=hp_ranges,
                 candidate_evaluations=[],
                 failed_candidates=[],
-                pending_evaluations=[])
+                pending_evaluations=[],
+            )
         else:
-            assert hp_ranges is init_state.hp_ranges, \
-                "hp_ranges and init_state.hp_ranges must be same object"
+            assert (
+                hp_ranges is init_state.hp_ranges
+            ), "hp_ranges and init_state.hp_ranges must be same object"
         self.state_transformer = GPModelPendingCandidateStateTransformer(
             gpmodel=gpmodel,
             init_state=init_state,
             model_args=model_args,
             skip_optimization=skip_optimization,
             profiler=profiler,
-            debug_log=debug_log)
+            debug_log=debug_log,
+        )
         self.random_state = np.random.RandomState(random_seed)
         self.random_generator = RandomStatefulCandidateGenerator(
-            hp_ranges, random_state=self.random_state)
+            hp_ranges, random_state=self.random_state
+        )
         self.profiler = profiler
-        self.do_profile = (profiler is not None)
+        self.do_profile = profiler is not None
         self.first_is_default = first_is_default
         if first_is_default:
-            assert isinstance(hp_ranges, HyperparameterRanges_CS), \
-                "If first_is_default, must have hp_ranges of HyperparameterRanges_CS type"
+            assert isinstance(
+                hp_ranges, HyperparameterRanges_CS
+            ), "If first_is_default, must have hp_ranges of HyperparameterRanges_CS type"
         if debug_log is not None:
-            assert isinstance(hp_ranges, HyperparameterRanges_CS), \
-                "If debug_log is given, must have hp_ranges of HyperparameterRanges_CS type"
+            assert isinstance(
+                hp_ranges, HyperparameterRanges_CS
+            ), "If debug_log is given, must have hp_ranges of HyperparameterRanges_CS type"
         if cost_metric_name is not None:
             self.cost_metric_name = cost_metric_name
         else:
-            self.cost_metric_name = 'elapsed_time'
+            self.cost_metric_name = "elapsed_time"
         # Sums up profiling records across all get_config calls
         self._profile_record = dict()
         if debug_log is not None:
             deb_msg = "[GPFIFOSearcher.__init__]\n"
-            deb_msg += ("- acquisition_class = {}\n".format(acquisition_class))
-            deb_msg += ("- local_minimizer_class = {}\n".format(local_minimizer_class))
-            deb_msg += ("- num_initial_candidates = {}\n".format(num_initial_candidates))
-            deb_msg += ("- num_initial_random_choices = {}\n".format(num_initial_random_choices))
-            deb_msg += ("- initial_scoring = {}\n".format(self.initial_scoring))
-            deb_msg += ("- first_is_default = {}".format(first_is_default))
+            deb_msg += "- acquisition_class = {}\n".format(acquisition_class)
+            deb_msg += "- local_minimizer_class = {}\n".format(local_minimizer_class)
+            deb_msg += "- num_initial_candidates = {}\n".format(num_initial_candidates)
+            deb_msg += "- num_initial_random_choices = {}\n".format(
+                num_initial_random_choices
+            )
+            deb_msg += "- initial_scoring = {}\n".format(self.initial_scoring)
+            deb_msg += "- first_is_default = {}".format(first_is_default)
             logger.info(deb_msg)
 
     def update(self, config: Candidate, reward: float, **kwargs):
@@ -202,14 +233,16 @@ class GPFIFOSearcher(object):
         """
         crit_val = self.map_reward(reward)
         metrics = dictionarize_objective(crit_val)
-        if 'elapsed_time' in kwargs:
-            metrics[self.cost_metric_name] = kwargs['elapsed_time']
-        self.state_transformer.label_candidate(CandidateEvaluation(
-            candidate=copy.deepcopy(config), metrics=metrics))
+        if "elapsed_time" in kwargs:
+            metrics[self.cost_metric_name] = kwargs["elapsed_time"]
+        self.state_transformer.label_candidate(
+            CandidateEvaluation(candidate=copy.deepcopy(config), metrics=metrics)
+        )
         if self.debug_log is not None:
             config_id = self.debug_log.config_id(config)
             msg = "Update for config_id {}: reward = {}, crit_val = {}".format(
-                config_id, reward, crit_val)
+                config_id, reward, crit_val
+            )
             logger.info(msg)
 
     def register_pending(self, config: Candidate):
@@ -225,15 +258,14 @@ class GPFIFOSearcher(object):
             if config in (x.candidate for x in state.candidate_evaluations):
                 evals = state.candidate_evaluations
                 num_labeled = len(evals)
-                pos_cand = next(
-                    i for i, x in enumerate(evals) if x.candidate == config)
+                pos_cand = next(i for i, x in enumerate(evals) if x.candidate == config)
                 error_msg = """
                 This configuration is already registered as labeled:
                    Position of labeled candidate: {} of {}
                    Label value: {}
                 """.format(
-                    pos_cand, num_labeled,
-                    evals[pos_cand].metrics[DEFAULT_METRIC])
+                    pos_cand, num_labeled, evals[pos_cand].metrics[DEFAULT_METRIC]
+                )
                 assert False, error_msg
             self.state_transformer.append_candidate(config)
 
@@ -245,14 +277,14 @@ class GPFIFOSearcher(object):
         """
         state = self.state_transformer.state
         if self.do_profile:
-            fit_hyperparams = not self.state_transformer.skip_optimization(
-                state)
+            fit_hyperparams = not self.state_transformer.skip_optimization(state)
             self.profiler.set_state(state, fit_hyperparams)
         blacklisted_candidates = compute_blacklisted_candidates(state)
-        pick_random = (len(blacklisted_candidates) < self.num_initial_random_choices) or \
-            (not state.candidate_evaluations)
+        pick_random = (
+            len(blacklisted_candidates) < self.num_initial_random_choices
+        ) or (not state.candidate_evaluations)
         if self.debug_log is not None:
-            self.debug_log.start_get_config('random' if pick_random else 'BO')
+            self.debug_log.start_get_config("random" if pick_random else "BO")
         if pick_random:
             config = None
             if self.first_is_default and (not blacklisted_candidates):
@@ -261,11 +293,14 @@ class GPFIFOSearcher(object):
                 if default_config and len(default_config.get_dictionary()) > 0:
                     config = default_config
                     if self.debug_log is not None:
-                        logger.info("Start with default config:\n{}".format(
-                            candidate_for_print(config)))
+                        logger.info(
+                            "Start with default config:\n{}".format(
+                                candidate_for_print(config)
+                            )
+                        )
             if config is None:
                 if self.do_profile:
-                    self.profiler.start('random')
+                    self.profiler.start("random")
                 for _ in range(GET_CONFIG_RANDOM_RETRIES):
                     _config = self.hp_ranges.random_candidate(self.random_state)
                     if _config not in blacklisted_candidates:
@@ -275,28 +310,30 @@ class GPFIFOSearcher(object):
                     raise AssertionError(
                         "Failed to sample a configuration not already chosen "
                         "before. Maybe there are no free configurations left? "
-                        "The blacklist size is {}".format(len(blacklisted_candidates)))
+                        "The blacklist size is {}".format(len(blacklisted_candidates))
+                    )
                 if self.do_profile:
-                    self.profiler.stop('random')
+                    self.profiler.stop("random")
         else:
             # Obtain current SurrogateModel from state transformer. Based on
             # this, the BO algorithm components can be constructed
             state = self.state_transformer.state
             if self.do_profile:
-                self.profiler.start('total_all')
-                self.profiler.start('total_update')
+                self.profiler.start("total_all")
+                self.profiler.start("total_update")
             # Note: Asking for the model triggers the posterior computation
             model = self.state_transformer.model()
             if self.do_profile:
-                self.profiler.stop('total_update')
+                self.profiler.stop("total_update")
             # Create BO algorithm
             initial_candidates_scorer = create_initial_candidates_scorer(
-                self.initial_scoring, model, self.acquisition_class,
-                self.random_state)
+                self.initial_scoring, model, self.acquisition_class, self.random_state
+            )
             local_optimizer = self.local_minimizer_class(
-                state, model, self.acquisition_class)
+                state, model, self.acquisition_class
+            )
             # Make sure not to use the same random seed for each call:
-            #random_seed = compute_random_seed({'0': state}, self.random_seed)
+            # random_seed = compute_random_seed({'0': state}, self.random_seed)
             bo_algorithm = BayesianOptimizationAlgorithm(
                 initial_candidates_generator=self.random_generator,
                 initial_candidates_scorer=initial_candidates_scorer,
@@ -309,21 +346,23 @@ class GPFIFOSearcher(object):
                 duplicate_detector=DuplicateDetectorIdentical(),
                 profiler=self.profiler,
                 sample_unique_candidates=False,
-                debug_log=self.debug_log)
+                debug_log=self.debug_log,
+            )
             # Next candidate decision
             if self.do_profile:
-                self.profiler.start('total_nextcand')
+                self.profiler.start("total_nextcand")
             _config = bo_algorithm.next_candidates()
             if len(_config) == 0:
                 raise AssertionError(
                     "Failed to find a configuration not already chosen "
                     "before. Maybe there are no free configurations left? "
-                    "The blacklist size is {}".format(len(blacklisted_candidates)))
+                    "The blacklist size is {}".format(len(blacklisted_candidates))
+                )
             config = _config[0]
             if self.do_profile:
-                self.profiler.stop('total_nextcand')
+                self.profiler.stop("total_nextcand")
             if self.do_profile:
-                self.profiler.stop('total_all')
+                self.profiler.stop("total_all")
 
         if self.debug_log is not None:
             self.debug_log.set_final_config(config)
@@ -333,7 +372,8 @@ class GPFIFOSearcher(object):
             self.profiler.clear()
             # Pull out profiling data from this block, add to _profile_record
             accumulate_profiling_record(
-                self._profile_record, self.profiler, pick_random)
+                self._profile_record, self.profiler, pick_random
+            )
 
         return config
 
@@ -378,19 +418,20 @@ class GPFIFOSearcher(object):
 
         """
         state = {
-            'model_params': self.get_params(),
-            'state': encode_state(self.state_transformer.state),
-            'skip_optimization': self.state_transformer.skip_optimization,
-            'random_state': self.random_state}
+            "model_params": self.get_params(),
+            "state": encode_state(self.state_transformer.state),
+            "skip_optimization": self.state_transformer.skip_optimization,
+            "random_state": self.random_state,
+        }
         if self.debug_log is not None:
-            state['debug_log'] = self.debug_log.get_mutable_state()
+            state["debug_log"] = self.debug_log.get_mutable_state()
         return state
 
     def clone_from_state(self, state):
         # Create clone with mutable state taken from 'state'
         model_args = self.state_transformer._model_args
-        init_state = decode_state(state['state'], self.hp_ranges)
-        skip_optimization = state['skip_optimization']
+        init_state = decode_state(state["state"], self.hp_ranges)
+        skip_optimization = state["skip_optimization"]
         new_searcher = GPFIFOSearcher(
             hp_ranges=self.hp_ranges,
             random_seed=self.random_seed,
@@ -406,60 +447,67 @@ class GPFIFOSearcher(object):
             initial_scoring=self.initial_scoring,
             profiler=self.profiler,
             first_is_default=self.first_is_default,
-            debug_log=self.debug_log)
-        new_searcher.state_transformer.set_params(state['model_params'])
-        new_searcher.random_state = state['random_state']
-        new_searcher.random_generator.random_state = \
-            state['random_state']
-        if self.debug_log and 'debug_log' in state:
-            new_searcher.debug_log.set_mutable_state(state['debug_log'])
+            debug_log=self.debug_log,
+        )
+        new_searcher.state_transformer.set_params(state["model_params"])
+        new_searcher.random_state = state["random_state"]
+        new_searcher.random_generator.random_state = state["random_state"]
+        if self.debug_log and "debug_log" in state:
+            new_searcher.debug_log.set_mutable_state(state["debug_log"])
         # Invalidate self (must not be used afterwards)
         self.state_transformer = None
         return new_searcher
 
 
 def encode_state(state: TuningJobState) -> dict:
-    assert isinstance(state.hp_ranges, HyperparameterRanges_CS), \
-        "Must have hp_ranges of HyperparameterRanges_CS type"
+    assert isinstance(
+        state.hp_ranges, HyperparameterRanges_CS
+    ), "Must have hp_ranges of HyperparameterRanges_CS type"
     candidate_evaluations = [
-        {'candidate': eval.candidate.get_dictionary(),
-         'metrics': eval.metrics}
-        for eval in state.candidate_evaluations]
+        {"candidate": eval.candidate.get_dictionary(), "metrics": eval.metrics}
+        for eval in state.candidate_evaluations
+    ]
     failed_candidates = [x.get_dictionary() for x in state.failed_candidates]
     pending_evaluations = [
-        eval.candidate.get_dictionary() for eval in state.pending_evaluations]
+        eval.candidate.get_dictionary() for eval in state.pending_evaluations
+    ]
     return {
-        'candidate_evaluations': candidate_evaluations,
-        'failed_candidates': failed_candidates,
-        'pending_evaluations': pending_evaluations}
+        "candidate_evaluations": candidate_evaluations,
+        "failed_candidates": failed_candidates,
+        "pending_evaluations": pending_evaluations,
+    }
 
 
-def decode_state(enc_state: dict, hp_ranges: HyperparameterRanges_CS) \
-        -> TuningJobState:
-    assert isinstance(hp_ranges, HyperparameterRanges_CS), \
-        "Must have hp_ranges of HyperparameterRanges_CS type"
+def decode_state(enc_state: dict, hp_ranges: HyperparameterRanges_CS) -> TuningJobState:
+    assert isinstance(
+        hp_ranges, HyperparameterRanges_CS
+    ), "Must have hp_ranges of HyperparameterRanges_CS type"
     config_space = hp_ranges.config_space
 
     def to_cs(x):
         return CS.Configuration(config_space, values=x)
 
     candidate_evaluations = [
-        CandidateEvaluation(to_cs(x['candidate']), x['metrics'])
-        for x in enc_state['candidate_evaluations']]
-    failed_candidates = [to_cs(x) for x in enc_state['failed_candidates']]
+        CandidateEvaluation(to_cs(x["candidate"]), x["metrics"])
+        for x in enc_state["candidate_evaluations"]
+    ]
+    failed_candidates = [to_cs(x) for x in enc_state["failed_candidates"]]
     pending_evaluations = [
-        PendingEvaluation(to_cs(x)) for x in enc_state['pending_evaluations']]
+        PendingEvaluation(to_cs(x)) for x in enc_state["pending_evaluations"]
+    ]
     return TuningJobState(
         hp_ranges=hp_ranges,
         candidate_evaluations=candidate_evaluations,
         failed_candidates=failed_candidates,
-        pending_evaluations=pending_evaluations)
+        pending_evaluations=pending_evaluations,
+    )
 
 
 def map_reward(const=1.0) -> MapReward:
     """
     Factory for map_reward argument in GPMultiFidelitySearcher.
     """
+
     def const_minus_x(x):
         return const - x
 

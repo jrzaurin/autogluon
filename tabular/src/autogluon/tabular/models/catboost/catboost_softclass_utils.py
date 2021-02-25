@@ -13,10 +13,13 @@ class SoftclassCustomMetric(CustomMetric):
     try_import_catboost()  # Need to first import catboost then catboost_dev not vice-versa.
     try_import_catboostdev()
     from catboost_dev import MultiRegressionCustomMetric
+
     def __init__(self, metric, is_higher_better, needs_pred_proba):  # metric is ignored
         super().__init__(metric, is_higher_better, needs_pred_proba)
         try_import_catboostdev()
-        self.softlogloss = self.SoftLogLossMetric()  # the metric object to pass to CatBoostRegressor
+        self.softlogloss = (
+            self.SoftLogLossMetric()
+        )  # the metric object to pass to CatBoostRegressor
 
     def evaluate(self, approxes, target, weight):
         return self.softlogloss.evaluate(approxes, target, weight)
@@ -34,7 +37,9 @@ class SoftclassCustomMetric(CustomMetric):
             weight_sum = len(target)
             approxes = np.array(approxes)
             approxes = np.exp(approxes)
-            approxes = np.multiply(approxes, 1/np.sum(approxes, axis=1)[:, np.newaxis])
+            approxes = np.multiply(
+                approxes, 1 / np.sum(approxes, axis=1)[:, np.newaxis]
+            )
             error_sum = soft_log_loss(np.array(target), np.array(approxes))
             return error_sum, weight_sum
 
@@ -43,9 +48,12 @@ class SoftclassObjective(object):
     try_import_catboost()  # Need to first import catboost then catboost_dev not vice-versa.
     try_import_catboostdev()
     from catboost_dev import MultiRegressionCustomObjective
+
     def __init__(self):
         try_import_catboostdev()
-        self.softlogloss = self.SoftLogLossObjective()  # the objective object to pass to CatBoostRegressor
+        self.softlogloss = (
+            self.SoftLogLossObjective()
+        )  # the objective object to pass to CatBoostRegressor
 
     class SoftLogLossObjective(MultiRegressionCustomObjective):
         # TODO: Consider replacing with C++ implementation (but requires building catboost from source).
@@ -54,8 +62,13 @@ class SoftclassObjective(object):
             exp_approx = [math.exp(val) for val in approxes]
             exp_sum = sum(exp_approx)
             exp_approx = [val / exp_sum for val in exp_approx]
-            grad = [(targets[j] - exp_approx[j])*weight for j in range(len(targets))]
-            hess = [[(exp_approx[j] * exp_approx[j2] - (j==j2)*exp_approx[j]) * weight
-                    for j in range(len(targets))] for j2 in range(len(targets))]
+            grad = [(targets[j] - exp_approx[j]) * weight for j in range(len(targets))]
+            hess = [
+                [
+                    (exp_approx[j] * exp_approx[j2] - (j == j2) * exp_approx[j])
+                    * weight
+                    for j in range(len(targets))
+                ]
+                for j2 in range(len(targets))
+            ]
             return (grad, hess)
-

@@ -11,22 +11,24 @@ logger = logging.getLogger(__name__)
 def get_type_family_raw(dtype) -> str:
     """From dtype, gets the dtype family."""
     try:
-        if dtype.name == 'category':
-            return 'category'
-        if 'datetime' in dtype.name:
-            return 'datetime'
+        if dtype.name == "category":
+            return "category"
+        if "datetime" in dtype.name:
+            return "datetime"
         elif np.issubdtype(dtype, np.integer):
-            return 'int'
+            return "int"
         elif np.issubdtype(dtype, np.floating):
-            return 'float'
+            return "float"
     except Exception as err:
-        logger.error(f'Warning: dtype {dtype} is not recognized as a valid dtype by numpy! AutoGluon may incorrectly handle this feature...')
+        logger.error(
+            f"Warning: dtype {dtype} is not recognized as a valid dtype by numpy! AutoGluon may incorrectly handle this feature..."
+        )
         logger.error(err)
 
-    if dtype.name in ['bool', 'bool_']:
-        return 'bool'
-    elif dtype.name in ['str', 'string', 'object']:
-        return 'object'
+    if dtype.name in ["bool", "bool_"]:
+        return "bool"
+    elif dtype.name in ["str", "string", "object"]:
+        return "object"
     else:
         return dtype.name
 
@@ -54,9 +56,9 @@ def get_type_map_special(X: DataFrame) -> dict:
 
 def get_type_special(X: Series) -> str:
     if check_if_datetime_as_object_feature(X):
-        type_special = 'datetime_as_object'
+        type_special = "datetime_as_object"
     elif check_if_nlp_feature(X):
-        type_special = 'text'
+        type_special = "text"
     else:
         type_special = None
     return type_special
@@ -93,7 +95,7 @@ def check_if_datetime_as_object_feature(X: Series) -> bool:
     # TODO: If low numeric, potentially it is just numeric instead of date
     if X.isnull().all():
         return False
-    if type_family != 'object':  # TODO: seconds from epoch support
+    if type_family != "object":  # TODO: seconds from epoch support
         return False
     try:
         # TODO: pd.Series(['20170204','20170205','20170206']) is incorrectly not detected as datetime_as_object
@@ -112,7 +114,7 @@ def check_if_datetime_as_object_feature(X: Series) -> bool:
 
 def check_if_nlp_feature(X: Series) -> bool:
     type_family = get_type_family_raw(X.dtype)
-    if type_family != 'object':
+    if type_family != "object":
         return False
     X_unique = X.unique()
     num_unique = len(X_unique)

@@ -5,20 +5,20 @@ import lzma
 
 compression_fn_map = {
     None: {
-        'open': open,
-        'extension': '',
+        "open": open,
+        "extension": "",
     },
-    'gzip': {
-        'open': gzip.open,
-        'extension': 'gz',
+    "gzip": {
+        "open": gzip.open,
+        "extension": "gz",
     },
-    'bz2': {
-        'open': bz2.open,
-        'extension': 'bz2',
+    "bz2": {
+        "open": bz2.open,
+        "extension": "bz2",
     },
-    'lzma': {
-        'open': lzma.open,
-        'extension': 'lzma',
+    "lzma": {
+        "open": lzma.open,
+        "extension": "lzma",
     },
 }
 

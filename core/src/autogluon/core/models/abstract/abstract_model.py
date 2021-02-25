@@ -13,12 +13,25 @@ import pandas as pd
 
 from .model_trial import model_trial
 from ... import metrics, Space
-from ...constants import AG_ARGS_FIT, BINARY, REGRESSION, REFIT_FULL_SUFFIX, OBJECTIVES_TO_NORMALIZE
+from ...constants import (
+    AG_ARGS_FIT,
+    BINARY,
+    REGRESSION,
+    REFIT_FULL_SUFFIX,
+    OBJECTIVES_TO_NORMALIZE,
+)
 from ...features.feature_metadata import FeatureMetadata
 from ...features.types import R_CATEGORY, R_OBJECT, R_FLOAT, R_INT
 from ...scheduler import FIFOScheduler
 from ...task.base import BasePredictor
-from ...utils import get_cpu_count, get_pred_from_proba, normalize_pred_probas, infer_eval_metric, compute_permutation_feature_importance, compute_weighted_metric
+from ...utils import (
+    get_cpu_count,
+    get_pred_from_proba,
+    normalize_pred_probas,
+    infer_eval_metric,
+    compute_permutation_feature_importance,
+    compute_weighted_metric,
+)
 from ...utils.exceptions import TimeLimitExceeded, NoValidFeatures
 from ...utils.loaders import load_pkl
 from ...utils.savers import save_json, save_pkl
@@ -40,37 +53,48 @@ class AbstractModel:
     feature_metadata (autogluon.core.features.feature_metadata.FeatureMetadata): contains feature type information that can be used to identify special features such as text ngrams and datetime as well as which features are numerical vs categorical
     """
 
-    model_file_name = 'model.pkl'
-    model_info_name = 'info.pkl'
-    model_info_json_name = 'info.json'
+    model_file_name = "model.pkl"
+    model_info_name = "info.pkl"
+    model_info_json_name = "info.json"
 
-    def __init__(self,
-                 path: str,
-                 name: str,
-                 problem_type: str,
-                 eval_metric: Union[str, metrics.Scorer] = None,
-                 hyperparameters=None,
-                 feature_metadata: FeatureMetadata = None,
-                 num_classes=None,
-                 stopping_metric=None,
-                 features=None,
-                 **kwargs):
+    def __init__(
+        self,
+        path: str,
+        name: str,
+        problem_type: str,
+        eval_metric: Union[str, metrics.Scorer] = None,
+        hyperparameters=None,
+        feature_metadata: FeatureMetadata = None,
+        num_classes=None,
+        stopping_metric=None,
+        features=None,
+        **kwargs,
+    ):
 
         self.name = name  # TODO: v0.1 Consider setting to self._name and having self.name be a property so self.name can't be set outside of self.rename()
         self.path_root = path
-        self.path = self.create_contexts(self.path_root + self.path_suffix)  # TODO: Make this path a function for consistency.
+        self.path = self.create_contexts(
+            self.path_root + self.path_suffix
+        )  # TODO: Make this path a function for consistency.
         self.num_classes = num_classes
         self.model = None
         self.problem_type = problem_type
         if eval_metric is not None:
-            self.eval_metric = metrics.get_metric(eval_metric, self.problem_type, 'eval_metric')  # Note: we require higher values = better performance
+            self.eval_metric = metrics.get_metric(
+                eval_metric, self.problem_type, "eval_metric"
+            )  # Note: we require higher values = better performance
         else:
             self.eval_metric = infer_eval_metric(problem_type=self.problem_type)
-            logger.log(20, f"Model {self.name}'s eval_metric inferred to be '{self.eval_metric.name}' because problem_type='{self.problem_type}' and eval_metric was not specified during init.")
+            logger.log(
+                20,
+                f"Model {self.name}'s eval_metric inferred to be '{self.eval_metric.name}' because problem_type='{self.problem_type}' and eval_metric was not specified during init.",
+            )
 
         if self.eval_metric.name in OBJECTIVES_TO_NORMALIZE:
             self.normalize_pred_probas = True
-            logger.debug(f"{self.name} predicted probabilities will be transformed to never =0 since eval_metric='{self.eval_metric.name}'")
+            logger.debug(
+                f"{self.name} predicted probabilities will be transformed to never =0 since eval_metric='{self.eval_metric.name}'"
+            )
         else:
             self.normalize_pred_probas = False
 
@@ -94,18 +118,26 @@ class AbstractModel:
                 self.params_aux.update(ag_args_fit)
 
         if stopping_metric is None:
-            self.stopping_metric = self.params_aux.get('stopping_metric', self._get_default_stopping_metric())
+            self.stopping_metric = self.params_aux.get(
+                "stopping_metric", self._get_default_stopping_metric()
+            )
         else:
-            if 'stopping_metric' in self.params_aux:
-                raise AssertionError('stopping_metric was specified in both hyperparameters ag_args_fit and model init. Please specify only once.')
+            if "stopping_metric" in self.params_aux:
+                raise AssertionError(
+                    "stopping_metric was specified in both hyperparameters ag_args_fit and model init. Please specify only once."
+                )
             self.stopping_metric = stopping_metric
-        self.stopping_metric = metrics.get_metric(self.stopping_metric, self.problem_type, 'stopping_metric')
+        self.stopping_metric = metrics.get_metric(
+            self.stopping_metric, self.problem_type, "stopping_metric"
+        )
 
         self._set_default_params()
         self.nondefault_params = []
         if hyperparameters is not None:
             self.params.update(hyperparameters)
-            self.nondefault_params = list(hyperparameters.keys())[:]  # These are hyperparameters that user has specified.
+            self.nondefault_params = list(hyperparameters.keys())[
+                :
+            ]  # These are hyperparameters that user has specified.
         self.params_trained = dict()
 
     @property
@@ -182,12 +214,16 @@ class AbstractModel:
         return {}
 
     def _set_default_searchspace(self):
-        """ Sets up default search space for HPO. Each hyperparameter which user did not specify is converted from
-            default fixed value to default search space.
+        """Sets up default search space for HPO. Each hyperparameter which user did not specify is converted from
+        default fixed value to default search space.
         """
         def_search_space = self._get_default_searchspace().copy()
         # Note: when subclassing AbstractModel, you must define or import get_default_searchspace() from the appropriate location.
-        for key in self.nondefault_params:  # delete all user-specified hyperparams from the default search space
+        for (
+            key
+        ) in (
+            self.nondefault_params
+        ):  # delete all user-specified hyperparams from the default search space
             def_search_space.pop(key, None)
         if self.params is not None:
             self.params.update(def_search_space)
@@ -204,10 +240,12 @@ class AbstractModel:
 
     def rename(self, name: str):
         """Renames the model and updates self.path to reflect the updated name."""
-        self.path = self.path[:-len(self.name) - 1] + name + os.path.sep
+        self.path = self.path[: -len(self.name) - 1] + name + os.path.sep
         self.name = name
 
-    def preprocess(self, X, preprocess_nonadaptive=True, preprocess_stateful=True, **kwargs):
+    def preprocess(
+        self, X, preprocess_nonadaptive=True, preprocess_stateful=True, **kwargs
+    ):
         if preprocess_nonadaptive:
             X = self._preprocess_nonadaptive(X, **kwargs)
         if preprocess_stateful:
@@ -248,67 +286,95 @@ class AbstractModel:
             feature_metadata = FeatureMetadata.from_df(X)
         else:
             feature_metadata = self.feature_metadata
-        get_features_kwargs = self.params_aux.get('get_features_kwargs', None)
+        get_features_kwargs = self.params_aux.get("get_features_kwargs", None)
         if get_features_kwargs is not None:
             valid_features = feature_metadata.get_features(**get_features_kwargs)
         else:
-            ignored_type_group_raw = self.params_aux.get('ignored_type_group_raw', None)
-            ignored_type_group_special = self.params_aux.get('ignored_type_group_special', None)
-            valid_features = feature_metadata.get_features(invalid_raw_types=ignored_type_group_raw, invalid_special_types=ignored_type_group_special)
-        get_features_kwargs_extra = self.params_aux.get('get_features_kwargs_extra', None)
+            ignored_type_group_raw = self.params_aux.get("ignored_type_group_raw", None)
+            ignored_type_group_special = self.params_aux.get(
+                "ignored_type_group_special", None
+            )
+            valid_features = feature_metadata.get_features(
+                invalid_raw_types=ignored_type_group_raw,
+                invalid_special_types=ignored_type_group_special,
+            )
+        get_features_kwargs_extra = self.params_aux.get(
+            "get_features_kwargs_extra", None
+        )
         if get_features_kwargs_extra is not None:
-            valid_features_extra = feature_metadata.get_features(**get_features_kwargs_extra)
-            valid_features = [feature for feature in valid_features if feature in valid_features_extra]
-        dropped_features = [feature for feature in self.features if feature not in valid_features]
-        logger.log(10, f'\tDropped {len(dropped_features)} of {len(self.features)} features.')
-        self.features = [feature for feature in self.features if feature in valid_features]
+            valid_features_extra = feature_metadata.get_features(
+                **get_features_kwargs_extra
+            )
+            valid_features = [
+                feature for feature in valid_features if feature in valid_features_extra
+            ]
+        dropped_features = [
+            feature for feature in self.features if feature not in valid_features
+        ]
+        logger.log(
+            10, f"\tDropped {len(dropped_features)} of {len(self.features)} features."
+        )
+        self.features = [
+            feature for feature in self.features if feature in valid_features
+        ]
         self.feature_metadata = feature_metadata.keep_features(self.features)
         if not self.features:
             raise NoValidFeatures
 
     def _preprocess_fit_args(self, **kwargs):
-        sample_weight = kwargs.get('sample_weight', None)
+        sample_weight = kwargs.get("sample_weight", None)
         if sample_weight is not None and isinstance(sample_weight, str):
-            raise ValueError("In model.fit(), sample_weight should be array of sample weight values, not string.")
-        time_limit = kwargs.get('time_limit', None)
-        max_time_limit_ratio = self.params_aux.get('max_time_limit_ratio', 1)
+            raise ValueError(
+                "In model.fit(), sample_weight should be array of sample weight values, not string."
+            )
+        time_limit = kwargs.get("time_limit", None)
+        max_time_limit_ratio = self.params_aux.get("max_time_limit_ratio", 1)
         if time_limit is not None:
             time_limit *= max_time_limit_ratio
-        max_time_limit = self.params_aux.get('max_time_limit', None)
+        max_time_limit = self.params_aux.get("max_time_limit", None)
         if max_time_limit is not None:
             if time_limit is None:
                 time_limit = max_time_limit
             else:
                 time_limit = min(time_limit, max_time_limit)
-        min_time_limit = self.params_aux.get('min_time_limit', 0)
+        min_time_limit = self.params_aux.get("min_time_limit", 0)
         if min_time_limit is None:
             time_limit = min_time_limit
         elif time_limit is not None:
             time_limit = max(time_limit, min_time_limit)
-        kwargs['time_limit'] = time_limit
+        kwargs["time_limit"] = time_limit
         kwargs = self._preprocess_fit_resources(**kwargs)
         return kwargs
 
     def _preprocess_fit_resources(self, silent=False, **kwargs):
         default_num_cpus, default_num_gpus = self._get_default_resources()
-        num_cpus = self.params_aux.get('num_cpus', 'auto')
-        num_gpus = self.params_aux.get('num_gpus', 'auto')
-        kwargs['num_cpus'] = kwargs.get('num_cpus', num_cpus)
-        kwargs['num_gpus'] = kwargs.get('num_gpus', num_gpus)
-        if kwargs['num_cpus'] == 'auto':
-            kwargs['num_cpus'] = default_num_cpus
-        if kwargs['num_gpus'] == 'auto':
-            kwargs['num_gpus'] = default_num_gpus
+        num_cpus = self.params_aux.get("num_cpus", "auto")
+        num_gpus = self.params_aux.get("num_gpus", "auto")
+        kwargs["num_cpus"] = kwargs.get("num_cpus", num_cpus)
+        kwargs["num_gpus"] = kwargs.get("num_gpus", num_gpus)
+        if kwargs["num_cpus"] == "auto":
+            kwargs["num_cpus"] = default_num_cpus
+        if kwargs["num_gpus"] == "auto":
+            kwargs["num_gpus"] = default_num_gpus
         if not silent:
-            logger.log(15, f"\tFitting {self.name} with 'num_gpus': {kwargs['num_gpus']}, 'num_cpus': {kwargs['num_cpus']}")
+            logger.log(
+                15,
+                f"\tFitting {self.name} with 'num_gpus': {kwargs['num_gpus']}, 'num_cpus': {kwargs['num_cpus']}",
+            )
         return kwargs
 
     def fit(self, **kwargs):
         kwargs = self._preprocess_fit_args(**kwargs)
-        if 'time_limit' not in kwargs or kwargs['time_limit'] is None or kwargs['time_limit'] > 0:
+        if (
+            "time_limit" not in kwargs
+            or kwargs["time_limit"] is None
+            or kwargs["time_limit"] > 0
+        ):
             self._fit(**kwargs)
         else:
-            logger.warning(f'\tWarning: Model has no time left to train, skipping model... (Time Left = {round(kwargs["time_limit"], 1)}s)')
+            logger.warning(
+                f'\tWarning: Model has no time left to train, skipping model... (Time Left = {round(kwargs["time_limit"], 1)}s)'
+            )
             raise TimeLimitExceeded
 
     def _fit(self, X, y, **kwargs):
@@ -318,7 +384,9 @@ class AbstractModel:
 
     def predict(self, X, **kwargs):
         y_pred_proba = self.predict_proba(X, **kwargs)
-        y_pred = get_pred_from_proba(y_pred_proba=y_pred_proba, problem_type=self.problem_type)
+        y_pred = get_pred_from_proba(
+            y_pred_proba=y_pred_proba, problem_type=self.problem_type
+        )
         return y_pred
 
     def predict_proba(self, X, normalize=None, **kwargs):
@@ -358,12 +426,13 @@ class AbstractModel:
             y_pred = self.predict_proba(X=X, **kwargs)
         return compute_weighted_metric(y, y_pred, metric, sample_weight)
 
-
     def score_with_y_pred_proba(self, y, y_pred_proba, metric=None, sample_weight=None):
         if metric is None:
             metric = self.eval_metric
         if metric.needs_pred:
-            y_pred = get_pred_from_proba(y_pred_proba=y_pred_proba, problem_type=self.problem_type)
+            y_pred = get_pred_from_proba(
+                y_pred_proba=y_pred_proba, problem_type=self.problem_type
+            )
         else:
             y_pred = y_pred_proba
         return compute_weighted_metric(y, y_pred, metric, sample_weight)
@@ -420,7 +489,9 @@ class AbstractModel:
         return model
 
     # TODO: Consider disabling feature pruning when num_features is high (>1000 for example), or using a faster feature importance calculation method
-    def compute_feature_importance(self, X, y, features=None, silent=False, importance_as_list=False, **kwargs) -> pd.DataFrame:
+    def compute_feature_importance(
+        self, X, y, features=None, silent=False, importance_as_list=False, **kwargs
+    ) -> pd.DataFrame:
         if self.features is not None:
             X = X[self.features]
 
@@ -432,30 +503,55 @@ class AbstractModel:
         feature_importance_quick_dict = self.get_model_feature_importance()
         # TODO: Also consider banning features with close to 0 importance
         # TODO: Consider adding 'golden' features if the importance is high enough to avoid unnecessary computation when doing feature selection
-        banned_features = [feature for feature, importance in feature_importance_quick_dict.items() if importance == 0 and feature in features]
-        features_to_check = [feature for feature in features if feature not in banned_features]
+        banned_features = [
+            feature
+            for feature, importance in feature_importance_quick_dict.items()
+            if importance == 0 and feature in features
+        ]
+        features_to_check = [
+            feature for feature in features if feature not in banned_features
+        ]
 
-        fi_df = self.compute_permutation_importance(X=X, y=y, features=features_to_check, silent=silent, importance_as_list=importance_as_list, **kwargs)
-        n = fi_df.iloc[0]['n'] if len(fi_df) > 0 else 1
+        fi_df = self.compute_permutation_importance(
+            X=X,
+            y=y,
+            features=features_to_check,
+            silent=silent,
+            importance_as_list=importance_as_list,
+            **kwargs,
+        )
+        n = fi_df.iloc[0]["n"] if len(fi_df) > 0 else 1
         if importance_as_list:
             banned_importance = [0] * n
-            results_banned = pd.Series(data=[banned_importance for _ in range(len(banned_features))], index=banned_features, dtype='object')
+            results_banned = pd.Series(
+                data=[banned_importance for _ in range(len(banned_features))],
+                index=banned_features,
+                dtype="object",
+            )
         else:
             banned_importance = 0
-            results_banned = pd.Series(data=[banned_importance for _ in range(len(banned_features))], index=banned_features, dtype='float64')
+            results_banned = pd.Series(
+                data=[banned_importance for _ in range(len(banned_features))],
+                index=banned_features,
+                dtype="float64",
+            )
 
-        results_banned_df = results_banned.to_frame(name='importance')
-        results_banned_df['stddev'] = 0
-        results_banned_df['n'] = n
-        results_banned_df['n'] = results_banned_df['n'].astype('int64')
-        fi_df = pd.concat([fi_df, results_banned_df]).sort_values(ascending=False, by='importance')
+        results_banned_df = results_banned.to_frame(name="importance")
+        results_banned_df["stddev"] = 0
+        results_banned_df["n"] = n
+        results_banned_df["n"] = results_banned_df["n"].astype("int64")
+        fi_df = pd.concat([fi_df, results_banned_df]).sort_values(
+            ascending=False, by="importance"
+        )
 
         return fi_df
 
     # Compute feature importance via permutation importance
     # Note: Expensive to compute
     #  Time to compute is O(predict_time*num_features)
-    def compute_permutation_importance(self, X, y, features: list, eval_metric=None, silent=False, **kwargs) -> pd.DataFrame:
+    def compute_permutation_importance(
+        self, X, y, features: list, eval_metric=None, silent=False, **kwargs
+    ) -> pd.DataFrame:
         if eval_metric is None:
             eval_metric = self.eval_metric
         transform_func = self.preprocess
@@ -467,8 +563,16 @@ class AbstractModel:
         predict_func_kwargs = dict(preprocess_nonadaptive=False)
 
         return compute_permutation_feature_importance(
-            X=X, y=y, features=features, eval_metric=self.eval_metric, predict_func=predict_func, predict_func_kwargs=predict_func_kwargs,
-            transform_func=transform_func, transform_func_kwargs=transform_func_kwargs, silent=silent, **kwargs
+            X=X,
+            y=y,
+            features=features,
+            eval_metric=self.eval_metric,
+            predict_func=predict_func,
+            predict_func_kwargs=predict_func_kwargs,
+            transform_func=transform_func,
+            transform_func_kwargs=transform_func_kwargs,
+            silent=silent,
+            **kwargs,
         )
 
     # Custom feature importance values for a model (such as those calculated from training)
@@ -501,7 +605,11 @@ class AbstractModel:
 
     def _get_init_args(self):
         hyperparameters = self.params.copy()
-        hyperparameters = {key: val for key, val in hyperparameters.items() if key in self.nondefault_params}
+        hyperparameters = {
+            key: val
+            for key, val in hyperparameters.items()
+            if key in self.nondefault_params
+        }
         init_args = dict(
             path=self.path_root,
             name=self.name,
@@ -512,111 +620,144 @@ class AbstractModel:
             model=None,
             hyperparameters=hyperparameters,
             features=self.features,
-            feature_metadata=self.feature_metadata
+            feature_metadata=self.feature_metadata,
         )
         return init_args
 
     def hyperparameter_tune(self, scheduler_options, time_limit=None, **kwargs):
         scheduler_options = copy.deepcopy(scheduler_options)
-        resource = copy.deepcopy(scheduler_options[1]['resource'])
-        if 'num_cpus' in resource:
-            if resource['num_cpus'] == 'auto':
-                resource.pop('num_cpus')
-        if 'num_gpus' in resource:
-            if resource['num_gpus'] == 'auto':
-                resource.pop('num_gpus')
+        resource = copy.deepcopy(scheduler_options[1]["resource"])
+        if "num_cpus" in resource:
+            if resource["num_cpus"] == "auto":
+                resource.pop("num_cpus")
+        if "num_gpus" in resource:
+            if resource["num_gpus"] == "auto":
+                resource.pop("num_gpus")
 
-        scheduler_options[1]['resource'] = self._preprocess_fit_resources(silent=True, **resource)
-        if 'time_out' not in scheduler_options[1]:
-            scheduler_options[1]['time_out'] = time_limit
+        scheduler_options[1]["resource"] = self._preprocess_fit_resources(
+            silent=True, **resource
+        )
+        if "time_out" not in scheduler_options[1]:
+            scheduler_options[1]["time_out"] = time_limit
         return self._hyperparameter_tune(scheduler_options=scheduler_options, **kwargs)
 
     def _hyperparameter_tune(self, X, y, X_val, y_val, scheduler_options, **kwargs):
         # verbosity = kwargs.get('verbosity', 2)
         time_start = time.time()
-        logger.log(15, "Starting generic AbstractModel hyperparameter tuning for %s model..." % self.name)
+        logger.log(
+            15,
+            "Starting generic AbstractModel hyperparameter tuning for %s model..."
+            % self.name,
+        )
         self._set_default_searchspace()
         params_copy = self.params.copy()
         directory = self.path  # also create model directory if it doesn't exist
         # TODO: This will break on S3. Use tabular/utils/savers for datasets, add new function
         scheduler_cls, scheduler_params = scheduler_options  # Unpack tuple
         if scheduler_cls is None or scheduler_params is None:
-            raise ValueError("scheduler_cls and scheduler_params cannot be None for hyperparameter tuning")
-        dataset_train_filename = 'dataset_train.p'
+            raise ValueError(
+                "scheduler_cls and scheduler_params cannot be None for hyperparameter tuning"
+            )
+        dataset_train_filename = "dataset_train.p"
         train_path = directory + dataset_train_filename
         save_pkl.save(path=train_path, object=(X, y))
 
-        dataset_val_filename = 'dataset_val.p'
+        dataset_val_filename = "dataset_val.p"
         val_path = directory + dataset_val_filename
         save_pkl.save(path=val_path, object=(X_val, y_val))
 
-        if not any(isinstance(params_copy[hyperparam], Space) for hyperparam in params_copy):
-            logger.warning("Attempting to do hyperparameter optimization without any search space (all hyperparameters are already fixed values)")
+        if not any(
+            isinstance(params_copy[hyperparam], Space) for hyperparam in params_copy
+        ):
+            logger.warning(
+                "Attempting to do hyperparameter optimization without any search space (all hyperparameters are already fixed values)"
+            )
         else:
             logger.log(15, "Hyperparameter search space for %s model: " % self.name)
             for hyperparam in params_copy:
                 if isinstance(params_copy[hyperparam], Space):
                     logger.log(15, f"{hyperparam}:   {params_copy[hyperparam]}")
 
-        fit_kwargs=scheduler_params['resource'].copy()
-        fit_kwargs['sample_weight'] = kwargs.get('sample_weight', None)
-        fit_kwargs['sample_weight_val'] = kwargs.get('sample_weight_val', None)
+        fit_kwargs = scheduler_params["resource"].copy()
+        fit_kwargs["sample_weight"] = kwargs.get("sample_weight", None)
+        fit_kwargs["sample_weight_val"] = kwargs.get("sample_weight_val", None)
         util_args = dict(
             dataset_train_filename=dataset_train_filename,
             dataset_val_filename=dataset_val_filename,
             directory=directory,
             model=self,
             time_start=time_start,
-            time_limit=scheduler_params['time_out'],
+            time_limit=scheduler_params["time_out"],
             fit_kwargs=fit_kwargs,
         )
 
         model_trial.register_args(util_args=util_args, **params_copy)
         scheduler: FIFOScheduler = scheduler_cls(model_trial, **scheduler_params)
-        if ('dist_ip_addrs' in scheduler_params) and (len(scheduler_params['dist_ip_addrs']) > 0):
+        if ("dist_ip_addrs" in scheduler_params) and (
+            len(scheduler_params["dist_ip_addrs"]) > 0
+        ):
             # This is multi-machine setting, so need to copy dataset to workers:
             logger.log(15, "Uploading data to remote workers...")
-            scheduler.upload_files([train_path, val_path])  # TODO: currently does not work.
-            directory = self.path  # TODO: need to change to path to working directory used on every remote machine
+            scheduler.upload_files(
+                [train_path, val_path]
+            )  # TODO: currently does not work.
+            directory = (
+                self.path
+            )  # TODO: need to change to path to working directory used on every remote machine
             model_trial.update(directory=directory)
             logger.log(15, "uploaded")
 
         scheduler.run()
         scheduler.join_jobs()
 
-        return self._get_hpo_results(scheduler=scheduler, scheduler_params=scheduler_params, time_start=time_start)
+        return self._get_hpo_results(
+            scheduler=scheduler,
+            scheduler_params=scheduler_params,
+            time_start=time_start,
+        )
 
     def _get_hpo_results(self, scheduler, scheduler_params: dict, time_start):
         # Store results / models from this HPO run:
         best_hp = scheduler.get_best_config()  # best_hp only contains searchable stuff
         hpo_results = {
-            'best_reward': scheduler.get_best_reward(),
-            'best_config': best_hp,
-            'total_time': time.time() - time_start,
-            'metadata': scheduler.metadata,
-            'training_history': scheduler.training_history,
-            'config_history': scheduler.config_history,
-            'reward_attr': scheduler._reward_attr,
-            'args': model_trial.args
+            "best_reward": scheduler.get_best_reward(),
+            "best_config": best_hp,
+            "total_time": time.time() - time_start,
+            "metadata": scheduler.metadata,
+            "training_history": scheduler.training_history,
+            "config_history": scheduler.config_history,
+            "reward_attr": scheduler._reward_attr,
+            "args": model_trial.args,
         }
 
-        hpo_results = BasePredictor._format_results(hpo_results)  # results summarizing HPO for this model
-        if ('dist_ip_addrs' in scheduler_params) and (len(scheduler_params['dist_ip_addrs']) > 0):
+        hpo_results = BasePredictor._format_results(
+            hpo_results
+        )  # results summarizing HPO for this model
+        if ("dist_ip_addrs" in scheduler_params) and (
+            len(scheduler_params["dist_ip_addrs"]) > 0
+        ):
             raise NotImplementedError("need to fetch model files from remote Workers")
             # TODO: need to handle locations carefully: fetch these files and put them into self.path directory:
             # 1) hpo_results['trial_info'][trial]['metadata']['trial_model_file']
 
-        hpo_models = {}  # stores all the model names and file paths to model objects created during this HPO run.
+        hpo_models = (
+            {}
+        )  # stores all the model names and file paths to model objects created during this HPO run.
         hpo_model_performances = {}
-        for trial in sorted(hpo_results['trial_info'].keys()):
+        for trial in sorted(hpo_results["trial_info"].keys()):
             # TODO: ignore models which were killed early by scheduler (eg. in Hyperband). How to ID these?
             file_id = f"T{trial}"  # unique identifier to files from this trial
             trial_model_name = self.name + os.path.sep + file_id
             trial_model_path = self.path_root + trial_model_name + os.path.sep
             hpo_models[trial_model_name] = trial_model_path
-            hpo_model_performances[trial_model_name] = hpo_results['trial_info'][trial][scheduler._reward_attr]
+            hpo_model_performances[trial_model_name] = hpo_results["trial_info"][trial][
+                scheduler._reward_attr
+            ]
 
-        logger.log(15, "Time for %s model HPO: %s" % (self.name, str(hpo_results['total_time'])))
+        logger.log(
+            15,
+            "Time for %s model HPO: %s" % (self.name, str(hpo_results["total_time"])),
+        )
         logger.log(15, "Best hyperparameter configuration for %s model: " % self.name)
         logger.log(15, str(best_hp))
         return hpo_models, hpo_model_performances, hpo_results
@@ -635,8 +776,11 @@ class AbstractModel:
     def get_disk_size(self) -> int:
         # Taken from https://stackoverflow.com/a/1392549
         from pathlib import Path
+
         model_path = Path(self.path)
-        model_disk_size = sum(f.stat().st_size for f in model_path.glob('**/*') if f.is_file())
+        model_disk_size = sum(
+            f.stat().st_size for f in model_path.glob("**/*") if f.is_file()
+        )
         return model_disk_size
 
     # TODO: This results in a doubling of memory usage of the model to calculate its size.
@@ -651,40 +795,46 @@ class AbstractModel:
     # If `remove_fit=True`, enables the removal of variables which are required for fitting the model. If the model is already fully trained, then it is safe to remove these.
     # If `remove_info=True`, enables the removal of variables which are used during model.get_info(). The values will be None when calling model.get_info().
     # If `requires_save=True`, enables the removal of variables which are part of the model.pkl object, requiring an overwrite of the model to disk if it was previously persisted.
-    def reduce_memory_size(self, remove_fit=True, remove_info=False, requires_save=True, **kwargs):
+    def reduce_memory_size(
+        self, remove_fit=True, remove_info=False, requires_save=True, **kwargs
+    ):
         pass
 
     # Deletes the model from disk.
     # WARNING: This will DELETE ALL FILES in the self.path directory, regardless if they were created by AutoGluon or not.
     #  DO NOT STORE FILES INSIDE OF THE MODEL DIRECTORY THAT ARE UNRELATED TO AUTOGLUON.
     def delete_from_disk(self):
-        logger.log(30, f'Deleting model {self.name}. All files under {self.path} will be removed.')
+        logger.log(
+            30,
+            f"Deleting model {self.name}. All files under {self.path} will be removed.",
+        )
         from pathlib import Path
         import shutil
+
         model_path = Path(self.path)
         # TODO: Report errors?
         shutil.rmtree(path=model_path, ignore_errors=True)
 
     def get_info(self) -> dict:
         info = {
-            'name': self.name,
-            'model_type': type(self).__name__,
-            'problem_type': self.problem_type,
-            'eval_metric': self.eval_metric.name,
-            'stopping_metric': self.stopping_metric.name,
-            'fit_time': self.fit_time,
-            'num_classes': self.num_classes,
-            'predict_time': self.predict_time,
-            'val_score': self.val_score,
-            'hyperparameters': self.params,
-            'hyperparameters_fit': self.params_trained,  # TODO: Explain in docs that this is for hyperparameters that differ in final model from original hyperparameters, such as epochs (from early stopping)
-            'hyperparameters_nondefault': self.nondefault_params,
+            "name": self.name,
+            "model_type": type(self).__name__,
+            "problem_type": self.problem_type,
+            "eval_metric": self.eval_metric.name,
+            "stopping_metric": self.stopping_metric.name,
+            "fit_time": self.fit_time,
+            "num_classes": self.num_classes,
+            "predict_time": self.predict_time,
+            "val_score": self.val_score,
+            "hyperparameters": self.params,
+            "hyperparameters_fit": self.params_trained,  # TODO: Explain in docs that this is for hyperparameters that differ in final model from original hyperparameters, such as epochs (from early stopping)
+            "hyperparameters_nondefault": self.nondefault_params,
             AG_ARGS_FIT: self.params_aux,
-            'num_features': len(self.features) if self.features else None,
-            'features': self.features,
-            'feature_metadata': self.feature_metadata,
+            "num_features": len(self.features) if self.features else None,
+            "features": self.features,
+            "feature_metadata": self.feature_metadata,
             # 'disk_size': self.get_disk_size(),
-            'memory_size': self.get_memory_size(),  # Memory usage of model in bytes
+            "memory_size": self.get_memory_size(),  # Memory usage of model in bytes
         }
         return info
 
@@ -722,11 +872,13 @@ class AbstractModel:
         return {}
 
     def _get_default_stopping_metric(self):
-        if self.eval_metric.name == 'roc_auc':
-            stopping_metric = 'log_loss'
+        if self.eval_metric.name == "roc_auc":
+            stopping_metric = "log_loss"
         else:
             stopping_metric = self.eval_metric
-        stopping_metric = metrics.get_metric(stopping_metric, self.problem_type, 'stopping_metric')
+        stopping_metric = metrics.get_metric(
+            stopping_metric, self.problem_type, "stopping_metric"
+        )
         return stopping_metric
 
 
@@ -736,65 +888,104 @@ class AbstractNeuralNetworkModel(AbstractModel):
         self._types_of_features = None
 
     # TODO: v0.1 clean method
-    def _get_types_of_features(self, df, skew_threshold=None, embed_min_categories=None, use_ngram_features=None, needs_extra_types=True):
-        """ Returns dict with keys: : 'continuous', 'skewed', 'onehot', 'embed', 'language', values = ordered list of feature-names falling into each category.
-            Each value is a list of feature-names corresponding to columns in original dataframe.
-            TODO: ensure features with zero variance have already been removed before this function is called.
+    def _get_types_of_features(
+        self,
+        df,
+        skew_threshold=None,
+        embed_min_categories=None,
+        use_ngram_features=None,
+        needs_extra_types=True,
+    ):
+        """Returns dict with keys: : 'continuous', 'skewed', 'onehot', 'embed', 'language', values = ordered list of feature-names falling into each category.
+        Each value is a list of feature-names corresponding to columns in original dataframe.
+        TODO: ensure features with zero variance have already been removed before this function is called.
         """
         if self._types_of_features is not None:
-            Warning("Attempting to _get_types_of_features for Model, but previously already did this.")
+            Warning(
+                "Attempting to _get_types_of_features for Model, but previously already did this."
+            )
 
         feature_types = self.feature_metadata.get_type_group_map_raw()
-        categorical_featnames = feature_types[R_CATEGORY] + feature_types[R_OBJECT] + feature_types['bool']
-        continuous_featnames = feature_types[R_FLOAT] + feature_types[R_INT]  # + self.__get_feature_type_if_present('datetime')
-        language_featnames = [] # TODO: not implemented. This should fetch text features present in the data
-        valid_features = categorical_featnames + continuous_featnames + language_featnames
+        categorical_featnames = (
+            feature_types[R_CATEGORY] + feature_types[R_OBJECT] + feature_types["bool"]
+        )
+        continuous_featnames = (
+            feature_types[R_FLOAT] + feature_types[R_INT]
+        )  # + self.__get_feature_type_if_present('datetime')
+        language_featnames = (
+            []
+        )  # TODO: not implemented. This should fetch text features present in the data
+        valid_features = (
+            categorical_featnames + continuous_featnames + language_featnames
+        )
 
         if len(valid_features) < df.shape[1]:
-            unknown_features = [feature for feature in df.columns if feature not in valid_features]
-            logger.log(15, f"Model will additionally ignore the following columns: {unknown_features}")
+            unknown_features = [
+                feature for feature in df.columns if feature not in valid_features
+            ]
+            logger.log(
+                15,
+                f"Model will additionally ignore the following columns: {unknown_features}",
+            )
             df = df.drop(columns=unknown_features)
             self.features = list(df.columns)
 
-        self.features_to_drop = df.columns[df.isna().all()].tolist()  # drop entirely NA columns which may arise after train/val split
+        self.features_to_drop = df.columns[
+            df.isna().all()
+        ].tolist()  # drop entirely NA columns which may arise after train/val split
         if self.features_to_drop:
-            logger.log(15, f"Model will additionally ignore the following columns: {self.features_to_drop}")
+            logger.log(
+                15,
+                f"Model will additionally ignore the following columns: {self.features_to_drop}",
+            )
             df = df.drop(columns=self.features_to_drop)
 
         if needs_extra_types is True:
-            types_of_features = {'continuous': [], 'skewed': [], 'onehot': [], 'embed': [], 'language': []}
+            types_of_features = {
+                "continuous": [],
+                "skewed": [],
+                "onehot": [],
+                "embed": [],
+                "language": [],
+            }
             # continuous = numeric features to rescale
             # skewed = features to which we will apply power (ie. log / box-cox) transform before normalization
             # onehot = features to one-hot encode (unknown categories for these features encountered at test-time are encoded as all zeros). We one-hot encode any features encountered that only have two unique values.
-            features_to_consider = [feat for feat in self.features if feat not in self.features_to_drop]
+            features_to_consider = [
+                feat for feat in self.features if feat not in self.features_to_drop
+            ]
             for feature in features_to_consider:
                 feature_data = df[feature]  # pd.Series
                 num_unique_vals = len(feature_data.unique())
-                if num_unique_vals == 2:  # will be onehot encoded regardless of proc.embed_min_categories value
-                    types_of_features['onehot'].append(feature)
+                if (
+                    num_unique_vals == 2
+                ):  # will be onehot encoded regardless of proc.embed_min_categories value
+                    types_of_features["onehot"].append(feature)
                 elif feature in continuous_featnames:
                     if np.abs(feature_data.skew()) > skew_threshold:
-                        types_of_features['skewed'].append(feature)
+                        types_of_features["skewed"].append(feature)
                     else:
-                        types_of_features['continuous'].append(feature)
+                        types_of_features["continuous"].append(feature)
                 elif feature in categorical_featnames:
-                    if num_unique_vals >= embed_min_categories:  # sufficiently many categories to warrant learned embedding dedicated to this feature
-                        types_of_features['embed'].append(feature)
+                    if (
+                        num_unique_vals >= embed_min_categories
+                    ):  # sufficiently many categories to warrant learned embedding dedicated to this feature
+                        types_of_features["embed"].append(feature)
                     else:
-                        types_of_features['onehot'].append(feature)
+                        types_of_features["onehot"].append(feature)
                 elif feature in language_featnames:
-                    types_of_features['language'].append(feature)
+                    types_of_features["language"].append(feature)
         else:
             types_of_features = []
             for feature in valid_features:
                 if feature in categorical_featnames:
-                    feature_type = 'CATEGORICAL'
+                    feature_type = "CATEGORICAL"
                 elif feature in continuous_featnames:
-                    feature_type = 'SCALAR'
+                    feature_type = "SCALAR"
                 elif feature in language_featnames:
-                    feature_type = 'TEXT'
+                    feature_type = "TEXT"
                 else:
-                    raise ValueError(f'Invalid feature: {feature}')
+                    raise ValueError(f"Invalid feature: {feature}")
 
                 types_of_features.append({"name": feature, "type": feature_type})
 

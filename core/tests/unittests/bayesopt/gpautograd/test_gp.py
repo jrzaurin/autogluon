@@ -4,12 +4,17 @@ import autograd.numpy as anp
 from autogluon.core.searcher.bayesopt.gpautograd.mean import ScalarMeanFunction
 from autogluon.core.searcher.bayesopt.gpautograd.kernel import Matern52
 from autogluon.core.searcher.bayesopt.gpautograd.likelihood import MarginalLikelihood
-from autogluon.core.searcher.bayesopt.gpautograd.gp_regression import \
-    GaussianProcessRegression
-from autogluon.core.searcher.bayesopt.gpautograd.constants import \
-    NOISE_VARIANCE_LOWER_BOUND, INVERSE_BANDWIDTHS_LOWER_BOUND
-from autogluon.core.searcher.bayesopt.gpautograd.gluon_blocks_helpers import \
-    LogarithmScalarEncoding, PositiveScalarEncoding
+from autogluon.core.searcher.bayesopt.gpautograd.gp_regression import (
+    GaussianProcessRegression,
+)
+from autogluon.core.searcher.bayesopt.gpautograd.constants import (
+    NOISE_VARIANCE_LOWER_BOUND,
+    INVERSE_BANDWIDTHS_LOWER_BOUND,
+)
+from autogluon.core.searcher.bayesopt.gpautograd.gluon_blocks_helpers import (
+    LogarithmScalarEncoding,
+    PositiveScalarEncoding,
+)
 
 
 def test_likelihood_encoding():
@@ -22,12 +27,13 @@ def test_likelihood_encoding():
 
 
 def test_gp_regression_no_noise():
-
     def f(x):
-        return anp.sin(x)/x
+        return anp.sin(x) / x
 
-    x_train = anp.arange(-5, 5, 0.2)# [-5,-4.8,-4.6,...,4.8]
-    x_test = anp.arange(-4.9, 5, 0.2)# [-4.9, -4.7, -4.5,...,4.9], note that train and test points do not overlap
+    x_train = anp.arange(-5, 5, 0.2)  # [-5,-4.8,-4.6,...,4.8]
+    x_test = anp.arange(
+        -4.9, 5, 0.2
+    )  # [-4.9, -4.7, -4.5,...,4.9], note that train and test points do not overlap
     y_train = f(x_train)
     y_test = f(x_test)
 
@@ -66,19 +72,20 @@ def test_gp_regression_no_noise():
 
 
 def test_gp_regression_with_noise():
-
     def f(x):
-        return anp.sin(x)/x
+        return anp.sin(x) / x
 
     anp.random.seed(7)
 
-    x_train = anp.arange(-5, 5, 0.2)# [-5, -4.8, -4.6,..., 4.8]
-    x_test = anp.arange(-4.9, 5, 0.2)# [-4.9, -4.7, -4.5,..., 4.9], note that train and test points do not overlap
+    x_train = anp.arange(-5, 5, 0.2)  # [-5, -4.8, -4.6,..., 4.8]
+    x_test = anp.arange(
+        -4.9, 5, 0.2
+    )  # [-4.9, -4.7, -4.5,..., 4.9], note that train and test points do not overlap
     y_train = f(x_train)
     y_test = f(x_test)
 
     std_noise = 0.01
-    noise_train = anp.random.normal(0.0, std_noise,size=y_train.shape)
+    noise_train = anp.random.normal(0.0, std_noise, size=y_train.shape)
 
     # to anp.ndarray
     y_train_np_ndarray = anp.array(y_train)
@@ -91,7 +98,7 @@ def test_gp_regression_with_noise():
 
     # Check that the value of the residual noise variance learned by empirical Bayes is in the same order as std_noise^2
     noise_variance = model.likelihood.get_noise_variance()
-    numpy.testing.assert_almost_equal(noise_variance, std_noise**2, decimal=4)
+    numpy.testing.assert_almost_equal(noise_variance, std_noise ** 2, decimal=4)
 
     mu_train, _ = model.predict(x_train_np_ndarray)[0]
     mu_test, _ = model.predict(x_test_np_ndarray)[0]
@@ -101,18 +108,17 @@ def test_gp_regression_with_noise():
 
 
 def test_gp_regression_2d_with_ard():
-
     def f(x):
         # Only dependent on the first column of x
-        return anp.sin(x[:,0])/x[:,0]
+        return anp.sin(x[:, 0]) / x[:, 0]
 
     anp.random.seed(7)
 
     dimension = 3
 
     # 30 train and test points in R^3
-    x_train = anp.random.uniform(-5, 5, size=(30,dimension))
-    x_test = anp.random.uniform(-5, 5, size=(30,dimension))
+    x_train = anp.random.uniform(-5, 5, size=(30, dimension))
+    x_test = anp.random.uniform(-5, 5, size=(30, dimension))
     y_train = f(x_train)
     y_test = f(x_test)
 
@@ -134,9 +140,16 @@ def test_gp_regression_2d_with_ard():
     sqd = model.likelihood.kernel.squared_distance
     inverse_bandwidths = sqd.encoding.get(sqd.inverse_bandwidths_internal.data())
 
-    assert inverse_bandwidths[0] > inverse_bandwidths[1] and inverse_bandwidths[0] > inverse_bandwidths[2]
-    numpy.testing.assert_almost_equal(inverse_bandwidths[1], INVERSE_BANDWIDTHS_LOWER_BOUND)
-    numpy.testing.assert_almost_equal(inverse_bandwidths[2], INVERSE_BANDWIDTHS_LOWER_BOUND)
+    assert (
+        inverse_bandwidths[0] > inverse_bandwidths[1]
+        and inverse_bandwidths[0] > inverse_bandwidths[2]
+    )
+    numpy.testing.assert_almost_equal(
+        inverse_bandwidths[1], INVERSE_BANDWIDTHS_LOWER_BOUND
+    )
+    numpy.testing.assert_almost_equal(
+        inverse_bandwidths[2], INVERSE_BANDWIDTHS_LOWER_BOUND
+    )
 
     mu_train, _ = model.predict(x_train_np_ndarray)[0]
     mu_test, _ = model.predict(x_test_np_ndarray)[0]

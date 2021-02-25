@@ -14,11 +14,10 @@ from ..utils import AutoGluonWarning
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['TaskScheduler']
+__all__ = ["TaskScheduler"]
 
 
 class ClassProperty(object):
-
     def __init__(self, fget):
         self.fget = fget
 
@@ -27,8 +26,8 @@ class ClassProperty(object):
 
 
 class TaskScheduler(object):
-    """Base Distributed Task Scheduler
-    """
+    """Base Distributed Task Scheduler"""
+
     managers = TaskManagers()
     jobs = DistributedJobRunner()
 
@@ -39,28 +38,27 @@ class TaskScheduler(object):
         self.finished_tasks = []
 
     def add_remote(self, ip_addrs):
-        """Add remote nodes to the scheduler computation resource.
-        """
+        """Add remote nodes to the scheduler computation resource."""
         self.managers.add_remote(ip_addrs)
 
     @classmethod
     def upload_files(cls, files, **kwargs):
-        """Upload files to remote machines, so that they are accessible by import or load.
-        """
+        """Upload files to remote machines, so that they are accessible by import or load."""
         cls.managers.upload_files(files, **kwargs)
 
     def _dict_from_task(self, task):
         if isinstance(task, Task):
-            return {'TASK_ID': task.task_id, 'Args': task.args}
+            return {"TASK_ID": task.task_id, "Args": task.args}
         else:
             assert isinstance(task, dict)
-            return {'TASK_ID': task['TASK_ID'], 'Args': task['Args']}
+            return {"TASK_ID": task["TASK_ID"], "Args": task["Args"]}
 
     def add_task(self, task, **kwargs):
-        """add_task() is now deprecated in favor of add_job().
-        """
-        warn("scheduler.add_task() is now deprecated in favor of scheduler.add_job().",
-             AutoGluonWarning)
+        """add_task() is now deprecated in favor of add_job()."""
+        warn(
+            "scheduler.add_task() is now deprecated in favor of scheduler.add_job().",
+            AutoGluonWarning,
+        )
         self.add_job(task, **kwargs)
 
     def add_job(self, task, **kwargs):
@@ -84,13 +82,12 @@ class TaskScheduler(object):
             cls.managers.request_resources(task.resources)
         job = cls.jobs.start_distributed_job(task, cls.managers)
         new_dict = self._dict_from_task(task)
-        new_dict['Job'] = job
+        new_dict["Job"] = job
         with self.managers.lock:
             self.scheduled_tasks.append(new_dict)
 
     def run_job(self, task):
-        """Run a training task to the scheduler (Sync).
-        """
+        """Run a training task to the scheduler (Sync)."""
         cls = TaskScheduler
         cls.managers.request_resources(task.resources)
         job = cls.jobs.start_distributed_job(task, cls.managers)
@@ -103,7 +100,7 @@ class TaskScheduler(object):
         with self.managers.lock:
             new_scheduled_tasks = []
             for task_dict in self.scheduled_tasks:
-                if task_dict['Job'].done():
+                if task_dict["Job"].done():
                     self._clean_task_internal(task_dict)
                     self.finished_tasks.append(self._dict_from_task(task_dict))
                 else:
@@ -112,17 +109,18 @@ class TaskScheduler(object):
                 self.scheduled_tasks = new_scheduled_tasks
 
     def join_tasks(self):
-        warn("scheduler.join_tasks() is now deprecated in favor of scheduler.join_jobs().",
-             AutoGluonWarning)
+        warn(
+            "scheduler.join_tasks() is now deprecated in favor of scheduler.join_jobs().",
+            AutoGluonWarning,
+        )
         self.join_jobs()
 
     def join_jobs(self, timeout=None):
-        """Wait all scheduled jobs to finish
-        """
+        """Wait all scheduled jobs to finish"""
         self._cleaning_tasks()
         for task_dict in self.scheduled_tasks:
             try:
-                task_dict['Job'].result(timeout=timeout)
+                task_dict["Job"].result(timeout=timeout)
             except distributed.TimeoutError as e:
                 logger.error(str(e))
             except:
@@ -132,10 +130,11 @@ class TaskScheduler(object):
         self._cleaning_tasks()
 
     def shutdown(self):
-        """shutdown() is now deprecated in favor of :func:`autogluon.done`.
-        """
-        warn("scheduler.shutdown() is now deprecated in favor of autogluon.done().",
-             AutoGluonWarning)
+        """shutdown() is now deprecated in favor of :func:`autogluon.done`."""
+        warn(
+            "scheduler.shutdown() is now deprecated in favor of autogluon.done().",
+            AutoGluonWarning,
+        )
         self.join_jobs()
         self.remote_manager.shutdown()
 
@@ -149,8 +148,8 @@ class TaskScheduler(object):
         if destination is None:
             destination = OrderedDict()
             destination._metadata = OrderedDict()
-        destination['finished_tasks'] = pickle.dumps(self.finished_tasks)
-        destination['TASK_ID'] = Task.TASK_ID.value
+        destination["finished_tasks"] = pickle.dumps(self.finished_tasks)
+        destination["TASK_ID"] = Task.TASK_ID.value
         return destination
 
     def load_state_dict(self, state_dict):
@@ -160,15 +159,19 @@ class TaskScheduler(object):
         --------
         >>> scheduler.load_state_dict(ag.load('checkpoint.ag'))
         """
-        self.finished_tasks = pickle.loads(state_dict['finished_tasks'])
-        Task.set_id(state_dict['TASK_ID'])
-        logger.debug('\nLoading finished_tasks: {} '.format(self.finished_tasks))
+        self.finished_tasks = pickle.loads(state_dict["finished_tasks"])
+        Task.set_id(state_dict["TASK_ID"])
+        logger.debug("\nLoading finished_tasks: {} ".format(self.finished_tasks))
 
     @property
     def num_finished_tasks(self):
         return len(self.finished_tasks)
 
     def __repr__(self):
-        reprstr = self.__class__.__name__ + '(\n' + \
-                  str(self.managers.resource_manager) + ')\n'
+        reprstr = (
+            self.__class__.__name__
+            + "(\n"
+            + str(self.managers.resource_manager)
+            + ")\n"
+        )
         return reprstr

@@ -2,17 +2,17 @@ import logging
 import os
 import warnings
 
-__all__ = ['in_ipynb', 'warning_filter', 'verbosity2loglevel', 'set_logger_verbosity']
+__all__ = ["in_ipynb", "warning_filter", "verbosity2loglevel", "set_logger_verbosity"]
 
 _logger = logging.getLogger()  # return root logger
 
 
 def in_ipynb():
-    if 'AG_DOCS' in os.environ and os.environ['AG_DOCS']:
+    if "AG_DOCS" in os.environ and os.environ["AG_DOCS"]:
         return False
     try:
-        cfg = get_ipython().config 
-        if 'IPKernelApp' in cfg:
+        cfg = get_ipython().config
+        if "IPKernelApp" in cfg:
             return True
         else:
             return False
@@ -35,19 +35,19 @@ class warning_filter(object):
 
 def verbosity2loglevel(verbosity):
     """ Translates verbosity to logging level. Suppresses warnings if verbosity = 0. """
-    if verbosity <= 0: # only errors
+    if verbosity <= 0:  # only errors
         warnings.filterwarnings("ignore")
         # print("Caution: all warnings suppressed")
         log_level = 40
-    elif verbosity == 1: # only warnings and critical print statements
+    elif verbosity == 1:  # only warnings and critical print statements
         log_level = 25
-    elif verbosity == 2: # key print statements which should be shown by default
-        log_level = 20 
-    elif verbosity == 3: # more-detailed printing
+    elif verbosity == 2:  # key print statements which should be shown by default
+        log_level = 20
+    elif verbosity == 3:  # more-detailed printing
         log_level = 15
     else:
-        log_level = 10 # print everything (ie. debug mode)
-    
+        log_level = 10  # print everything (ie. debug mode)
+
     return log_level
 
 

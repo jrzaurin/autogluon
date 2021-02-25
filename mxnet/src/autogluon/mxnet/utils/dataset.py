@@ -2,11 +2,7 @@ import time
 import numpy as np
 import mxnet as mx
 
-__all__ = [
-    'BaseDataset',
-    'SplitSampler',
-    'SampledDataset',
-    'get_split_samplers']
+__all__ = ["BaseDataset", "SplitSampler", "SampledDataset", "get_split_samplers"]
 
 
 SPLIT_SEED = int(time.time())
@@ -24,7 +20,7 @@ def get_split_samplers(train_dataset, split_ratio=0.8):
     indices = list(range(num_samples))
     np.random.seed(SPLIT_SEED)
     np.random.shuffle(indices)
-    train_sampler = SplitSampler(indices[0: split_idx])
+    train_sampler = SplitSampler(indices[0:split_idx])
     val_sampler = SplitSampler(indices[split_idx:num_samples])
     return train_sampler, val_sampler
 
@@ -37,6 +33,7 @@ class SplitSampler(object):
     length : int
         Length of the sequence.
     """
+
     def __init__(self, indices):
         self.indices = indices
 
@@ -51,6 +48,7 @@ class SplitSampler(object):
 
 class SampledDataset(mx.gluon.data.Dataset):
     """Dataset with elements chosen by a sampler"""
+
     def __init__(self, dataset, sampler):
         self._dataset = dataset
         self._sampler = sampler

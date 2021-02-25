@@ -34,8 +34,15 @@ class _TextTokenIdsFieldBatchify:
         if data[0].token_offsets is None:
             batch_token_offsets = None
         else:
-            batch_token_offsets = self._pad_batchify([ele.token_offsets for ele in data])
-        return batch_token_ids, batch_valid_length, batch_segment_ids, batch_token_offsets
+            batch_token_offsets = self._pad_batchify(
+                [ele.token_offsets for ele in data]
+            )
+        return (
+            batch_token_ids,
+            batch_valid_length,
+            batch_segment_ids,
+            batch_token_offsets,
+        )
 
 
 class TextTokenIdsField:
@@ -62,11 +69,11 @@ class TextTokenIdsField:
         return _TextTokenIdsFieldBatchify(round_to)
 
     def __str__(self):
-        ret = '{}(\n'.format(self.__class__.__name__)
-        ret += 'token_ids={}\n'.format(self.token_ids)
-        ret += 'segment_ids={}\n'.format(self.segment_ids)
-        ret += 'token_offsets={}\n'.format(self.token_offsets)
-        ret += ')\n'
+        ret = "{}(\n".format(self.__class__.__name__)
+        ret += "token_ids={}\n".format(self.token_ids)
+        ret += "segment_ids={}\n".format(self.segment_ids)
+        ret += "token_offsets={}\n".format(self.token_offsets)
+        ret += ")\n"
         return ret
 
 
@@ -123,10 +130,10 @@ class EntityField:
         return _EntityFieldBatchify()
 
     def __str__(self):
-        ret = '{}(\n'.format(self.__class__.__name__)
-        ret += 'data={}\n'.format(self.data)
-        ret += 'label={}\n'.format(None if self.label is None else self.label)
-        ret += ')\n'
+        ret = "{}(\n".format(self.__class__.__name__)
+        ret += "data={}\n".format(self.data)
+        ret += "label={}\n".format(None if self.label is None else self.label)
+        ret += ")\n"
         return ret
 
 
@@ -160,9 +167,9 @@ class NumericalField:
         return _ArrayBatchify()
 
     def __str__(self):
-        ret = '{}(\n'.format(self.__class__.__name__)
-        ret += 'data={}\n'.format(self.data)
-        ret += ')\n'
+        ret = "{}(\n".format(self.__class__.__name__)
+        ret += "data={}\n".format(self.data)
+        ret += ")\n"
         return ret
 
 

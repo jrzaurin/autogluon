@@ -12,9 +12,16 @@ from .space import _add_hp, _add_cs, _rm_hp, _strip_config_space, SPLITTER
 from .utils import EasyDict as ezdict
 from .utils.deprecate import make_deprecate
 
-__all__ = ['args', 'obj', 'func', 'sample_config',
-           'autogluon_register_args', 'autogluon_object', 'autogluon_function',
-           'autogluon_register_dict']
+__all__ = [
+    "args",
+    "obj",
+    "func",
+    "sample_config",
+    "autogluon_register_args",
+    "autogluon_object",
+    "autogluon_function",
+    "autogluon_register_dict",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +47,11 @@ def sample_config(args, config):
             args_dict[k] = v.init()
     return args
 
+
 class _autogluon_method(object):
-    SEED = mp.Value('i', 0)
+    SEED = mp.Value("i", 0)
     LOCK = mp.Lock()
+
     def __init__(self, f):
         self.f = f
         self.args = ezdict()
@@ -53,15 +62,16 @@ class _autogluon_method(object):
         self._rand_seed()
         args = sample_config(args, new_config)
         from .scheduler.reporter import FakeReporter
-        if 'reporter' not in kwargs:
-            logger.debug('Creating FakeReporter for test purpose.')
-            kwargs['reporter'] = FakeReporter()
+
+        if "reporter" not in kwargs:
+            logger.debug("Creating FakeReporter for test purpose.")
+            kwargs["reporter"] = FakeReporter()
 
         output = self.f(args, **kwargs)
-        logger.debug('Reporter Done!')
-        kwargs['reporter'](done=True)
+        logger.debug("Reporter Done!")
+        kwargs["reporter"](done=True)
         return output
- 
+
     def register_args(self, default={}, **kwvars):
         if isinstance(default, (argparse.Namespace, argparse.ArgumentParser)):
             default = vars(default)
@@ -71,8 +81,7 @@ class _autogluon_method(object):
         self.update(**kwvars)
 
     def update(self, **kwargs):
-        """For searcher support ConfigSpace
-        """
+        """For searcher support ConfigSpace"""
         self.kwvars.update(kwargs)
         for k, v in self.kwvars.items():
             if isinstance(v, (NestedSpace)):
@@ -98,15 +107,14 @@ class _autogluon_method(object):
 
     @property
     def kwspaces(self):
-        """For RL searcher/controller
-        """
+        """For RL searcher/controller"""
         kw_spaces = OrderedDict()
         for k, v in self.kwvars.items():
             if isinstance(v, NestedSpace):
                 if isinstance(v, Categorical):
-                    kw_spaces['{}{}choice'.format(k, SPLITTER)] = v
+                    kw_spaces["{}{}choice".format(k, SPLITTER)] = v
                 for sub_k, sub_v in v.kwspaces.items():
-                    new_k = '{}{}{}'.format(k, SPLITTER, sub_k)
+                    new_k = "{}{}{}".format(k, SPLITTER, sub_k)
                     kw_spaces[new_k] = sub_v
             elif isinstance(v, Space):
                 kw_spaces[k] = v
@@ -121,9 +129,9 @@ class _autogluon_method(object):
 
 
 def args(default=None, **kwvars):
-    """Decorator for a Python training script that registers its arguments as hyperparameters. 
+    """Decorator for a Python training script that registers its arguments as hyperparameters.
        Each hyperparameter takes fixed value or is a searchable space, and the arguments may either be:
-       built-in Python objects (e.g. floats, strings, lists, etc.), AutoGluon objects (see :func:`autogluon.obj`), 
+       built-in Python objects (e.g. floats, strings, lists, etc.), AutoGluon objects (see :func:`autogluon.obj`),
        or AutoGluon search spaces (see :class:`autogluon.space.Int`, :class:`autogluon.space.Real`, etc.).
 
     Examples
@@ -135,14 +143,15 @@ def args(default=None, **kwvars):
     """
     if default is None:
         default = dict()
-    kwvars['_default_config'] = default
+    kwvars["_default_config"] = default
+
     def registered_func(func):
         @_autogluon_method
         @functools.wraps(func)
         def wrapper_call(*args, **kwargs):
             return func(*args, **kwargs)
 
-        default = kwvars['_default_config']
+        default = kwvars["_default_config"]
         wrapper_call.register_args(default=default, **kwvars)
         return wrapper_call
 
@@ -150,7 +159,7 @@ def args(default=None, **kwvars):
 
 
 def func(**kwvars):
-    """Decorator for a function that registers its arguments as hyperparameters. 
+    """Decorator for a function that registers its arguments as hyperparameters.
        Each hyperparameter may take a fixed value or be a searchable space (autogluon.space).
 
     Returns
@@ -162,14 +171,16 @@ def func(**kwvars):
     --------
     >>> import autogluon.core as ag
     >>> from gluoncv.model_zoo import get_model
-    >>> 
+    >>>
     >>> @ag.func(pretrained=ag.space.Categorical(True, False))
     >>> def cifar_resnet(pretrained):
     ...     return get_model('cifar_resnet20_v1', pretrained=pretrained)
     """
+
     def _autogluon_kwargs_func(**kwvars):
         def registered_func(func):
             kwspaces = OrderedDict()
+
             @functools.wraps(func)
             def wrapper_call(*args, **kwargs):
                 _kwvars = copy.deepcopy(kwvars)
@@ -185,8 +196,10 @@ def func(**kwvars):
                     else:
                         kwargs[k] = v
                 return func(*args, **kwargs)
+
             wrapper_call.kwspaces = kwspaces
             return wrapper_call
+
         return registered_func
 
     def registered_func(func):
@@ -207,7 +220,7 @@ def func(**kwvars):
                         kwargs[k] = kwspaces[k].sample(**sub_config)
                     elif k in config:
                         kwargs[k] = config[k]
-                        
+
                 return self.func(*self.args, **kwargs)
 
         @functools.wraps(func)
@@ -217,11 +230,14 @@ def func(**kwvars):
             agobj = autogluonobject(*args, **kwargs)
             agobj.kwvars = _kwvars
             return agobj
+
         return wrapper_call
+
     return registered_func
 
+
 def obj(**kwvars):
-    """Decorator for a Python class that registers its arguments as hyperparameters. 
+    """Decorator for a Python class that registers its arguments as hyperparameters.
        Each hyperparameter may take a fixed value or be a searchable space (autogluon.space).
 
     Returns
@@ -240,9 +256,11 @@ def obj(**kwvars):
     >>> class Adam(optim.Adam):
     >>>     pass
     """
+
     def _autogluon_kwargs_obj(**kwvars):
         def registered_func(func):
             kwspaces = OrderedDict()
+
             @functools.wraps(func)
             def wrapper_call(*args, **kwargs):
                 kwvars.update(kwargs)
@@ -257,9 +275,11 @@ def obj(**kwvars):
                     else:
                         kwargs[k] = v
                 return func(*args, **kwargs)
+
             wrapper_call.kwspaces = kwspaces
             wrapper_call.kwvars = kwvars
             return wrapper_call
+
         return registered_func
 
     def registered_class(Cls):
@@ -284,7 +304,7 @@ def obj(**kwvars):
                 return Cls(*args, **kwargs)
 
             def __repr__(self):
-                return 'AutoGluonObject -- ' + Cls.__name__
+                return "AutoGluonObject -- " + Cls.__name__
 
         autogluonobject.kwvars = autogluonobject.__init__.kwvars
         autogluonobject.__doc__ = Cls.__doc__
@@ -294,8 +314,7 @@ def obj(**kwvars):
     return registered_class
 
 
-
-autogluon_register_args = make_deprecate(args, 'autogluon_register_args')
-autogluon_register_dict = make_deprecate(args, 'autogluon_register_dict')
-autogluon_function = make_deprecate(func, 'autogluon_function')
-autogluon_object = make_deprecate(obj, 'autogluon_object')
+autogluon_register_args = make_deprecate(args, "autogluon_register_args")
+autogluon_register_dict = make_deprecate(args, "autogluon_register_dict")
+autogluon_function = make_deprecate(func, "autogluon_function")
+autogluon_object = make_deprecate(obj, "autogluon_object")

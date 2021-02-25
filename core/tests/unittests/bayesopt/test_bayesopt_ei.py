@@ -1,25 +1,32 @@
 from typing import List
 import numpy as np
 
-from autogluon.core.searcher.bayesopt.datatypes.common import \
-    CandidateEvaluation
-from autogluon.core.searcher.bayesopt.datatypes.hp_ranges import \
-    HyperparameterRanges_Impl, HyperparameterRangeContinuous
+from autogluon.core.searcher.bayesopt.datatypes.common import CandidateEvaluation
+from autogluon.core.searcher.bayesopt.datatypes.hp_ranges import (
+    HyperparameterRanges_Impl,
+    HyperparameterRangeContinuous,
+)
 from autogluon.core.searcher.bayesopt.datatypes.scaling import LinearScaling
-from autogluon.core.searcher.bayesopt.datatypes.tuning_job_state import \
-    TuningJobState
-from autogluon.core.searcher.bayesopt.gpautograd.constants import \
-    DEFAULT_MCMC_CONFIG, DEFAULT_OPTIMIZATION_CONFIG
-from autogluon.core.searcher.bayesopt.models.meanstd_acqfunc import \
-    EIAcquisitionFunction
-from autogluon.core.searcher.bayesopt.models.gp_model import \
-    GaussProcSurrogateModel
-from autogluon.core.searcher.bayesopt.tuning_algorithms.bo_algorithm_components import \
-    LBFGSOptimizeAcquisition
-from autogluon.core.searcher.bayesopt.tuning_algorithms.default_algorithm import \
-    dictionarize_objective, DEFAULT_METRIC
-from autogluon.core.searcher.bayesopt.utils.test_objects import \
-    default_gpmodel, default_gpmodel_mcmc
+from autogluon.core.searcher.bayesopt.datatypes.tuning_job_state import TuningJobState
+from autogluon.core.searcher.bayesopt.gpautograd.constants import (
+    DEFAULT_MCMC_CONFIG,
+    DEFAULT_OPTIMIZATION_CONFIG,
+)
+from autogluon.core.searcher.bayesopt.models.meanstd_acqfunc import (
+    EIAcquisitionFunction,
+)
+from autogluon.core.searcher.bayesopt.models.gp_model import GaussProcSurrogateModel
+from autogluon.core.searcher.bayesopt.tuning_algorithms.bo_algorithm_components import (
+    LBFGSOptimizeAcquisition,
+)
+from autogluon.core.searcher.bayesopt.tuning_algorithms.default_algorithm import (
+    dictionarize_objective,
+    DEFAULT_METRIC,
+)
+from autogluon.core.searcher.bayesopt.utils.test_objects import (
+    default_gpmodel,
+    default_gpmodel_mcmc,
+)
 
 
 # This setup makes little sense for good testing.
@@ -53,30 +60,42 @@ def default_models(do_mcmc=True) -> List[GaussProcSurrogateModel]:
 
     state = TuningJobState(
         HyperparameterRanges_Impl(
-            HyperparameterRangeContinuous('x', 0.0, 1.0, LinearScaling()),
-            HyperparameterRangeContinuous('y', 0.0, 1.0, LinearScaling()),
+            HyperparameterRangeContinuous("x", 0.0, 1.0, LinearScaling()),
+            HyperparameterRangeContinuous("y", 0.0, 1.0, LinearScaling()),
         ),
-        [
-            CandidateEvaluation(x, y) for x, y in zip(X, Y)
-        ],
-        [], []
+        [CandidateEvaluation(x, y) for x, y in zip(X, Y)],
+        [],
+        [],
     )
     random_seed = 0
 
     gpmodel = default_gpmodel(
-        state, random_seed=random_seed,
-        optimization_config=DEFAULT_OPTIMIZATION_CONFIG)
-    result = [GaussProcSurrogateModel(
-        state, DEFAULT_METRIC, random_seed, gpmodel, fit_parameters=True,
-        num_fantasy_samples=20)]
+        state, random_seed=random_seed, optimization_config=DEFAULT_OPTIMIZATION_CONFIG
+    )
+    result = [
+        GaussProcSurrogateModel(
+            state,
+            DEFAULT_METRIC,
+            random_seed,
+            gpmodel,
+            fit_parameters=True,
+            num_fantasy_samples=20,
+        )
+    ]
     if do_mcmc:
         gpmodel_mcmc = default_gpmodel_mcmc(
-            state, random_seed=random_seed,
-            mcmc_config=DEFAULT_MCMC_CONFIG)
+            state, random_seed=random_seed, mcmc_config=DEFAULT_MCMC_CONFIG
+        )
         result.append(
             GaussProcSurrogateModel(
-                state, DEFAULT_METRIC, random_seed, gpmodel_mcmc,
-                fit_parameters=True,num_fantasy_samples=20))
+                state,
+                DEFAULT_METRIC,
+                random_seed,
+                gpmodel_mcmc,
+                fit_parameters=True,
+                num_fantasy_samples=20,
+            )
+        )
     return result
 
 
@@ -88,14 +107,14 @@ def plot_ei_mean_std(model, ei, max_grid=1.0):
     inputs = np.hstack([Xgrid.reshape(-1, 1), Ygrid.reshape(-1, 1)])
     Z_ei = ei.compute_acq(inputs)[0]
     predictions = model.predict(inputs)[0]
-    Z_means = predictions['mean']
-    Z_std = predictions['std']
-    titles = ['EI', 'mean', 'std']
+    Z_means = predictions["mean"]
+    Z_std = predictions["std"]
+    titles = ["EI", "mean", "std"]
     for i, (Z, title) in enumerate(zip([Z_ei, Z_means, Z_std], titles)):
         plt.subplot(1, 3, i + 1)
         plt.imshow(
-            Z.reshape(Xgrid.shape), extent=[0, max_grid, 0, max_grid],
-            origin='lower')
+            Z.reshape(Xgrid.shape), extent=[0, max_grid, 0, max_grid], origin="lower"
+        )
         plt.colorbar()
         plt.title(title)
     plt.show()
@@ -110,21 +129,23 @@ def test_sanity_check():
     # - test that points closer to better points have higher expected improvement
     for model in default_models(do_mcmc=False):
         ei = EIAcquisitionFunction(model)
-        X = np.array([
-            (0.0, 0.0),  # 0
-            (1.0, 0.0),  # 1
-            (0.0, 1.0),  # 2
-            (1.0, 1.0),  # 3
-            (0.2, 0.0),  # 4
-            (0.0, 0.2),  # 5
-            (0.1, 0.0),  # 6
-            (0.0, 0.1),  # 7
-            (0.1, 0.1),  # 8
-            (0.9, 0.9),  # 9
-        ])
+        X = np.array(
+            [
+                (0.0, 0.0),  # 0
+                (1.0, 0.0),  # 1
+                (0.0, 1.0),  # 2
+                (1.0, 1.0),  # 3
+                (0.2, 0.0),  # 4
+                (0.0, 0.2),  # 5
+                (0.1, 0.0),  # 6
+                (0.0, 0.1),  # 7
+                (0.1, 0.1),  # 8
+                (0.9, 0.9),  # 9
+            ]
+        )
         _acq = ei.compute_acq(X).flatten()
-        #print('Negative EI values:')
-        #print(_acq)
+        # print('Negative EI values:')
+        # print(_acq)
         acq = list(_acq)
 
         assert all(a <= 0 for a in acq), acq
@@ -155,6 +176,7 @@ def test_best_value():
         # override current best
         def new_current_best():
             return np.array([10])
+
         model.current_best = new_current_best
 
         acq_best2 = list(ei.compute_acq(test_X).flatten())
@@ -181,14 +203,13 @@ def test_optimization_improves():
     random = np.random.RandomState(42)
     for model in default_models():
         ei = EIAcquisitionFunction(model)
-        opt = LBFGSOptimizeAcquisition(
-            model.state, model, EIAcquisitionFunction)
+        opt = LBFGSOptimizeAcquisition(model.state, model, EIAcquisitionFunction)
         if debug_output:
-            print('\n\nGP MCMC' if model.does_mcmc() else 'GP Opt')
+            print("\n\nGP MCMC" if model.does_mcmc() else "GP Opt")
             fzero = ei.compute_acq(np.zeros((1, 2)))[0]
-            print('f(0) = {}'.format(fzero))
+            print("f(0) = {}".format(fzero))
         if debug_output and not model.does_mcmc():
-            print('Hyperpars: {}'.format(model.get_params()))
+            print("Hyperpars: {}".format(model.get_params()))
             # Plot the thing!
             plot_ei_mean_std(model, ei, max_grid=0.001)
             plot_ei_mean_std(model, ei, max_grid=0.01)
@@ -197,24 +218,25 @@ def test_optimization_improves():
 
         non_zero_acq_at_least_once = False
         for iter in range(10):
-            #initial_point = random.uniform(low=0.0, high=1.0, size=(2,))
+            # initial_point = random.uniform(low=0.0, high=1.0, size=(2,))
             initial_point = random.uniform(low=0.0, high=0.1, size=(2,))
             acq0, df0 = ei.compute_acq_with_gradient(initial_point)
             if debug_output:
-                print('\nInitial point: f(x0) = {}, x0 = {}'.format(
-                    acq0, initial_point))
-                print('grad0 = {}'.format(df0))
+                print(
+                    "\nInitial point: f(x0) = {}, x0 = {}".format(acq0, initial_point)
+                )
+                print("grad0 = {}".format(df0))
             if acq0 != 0:
                 non_zero_acq_at_least_once = True
                 optimized = np.array(opt.optimize(tuple(initial_point)))
                 acq_opt = ei.compute_acq(optimized)[0]
                 if debug_output:
-                    print('Final point: f(x1) = {}, x1 = {}'.format(
-                        acq_opt, optimized))
+                    print("Final point: f(x1) = {}, x1 = {}".format(acq_opt, optimized))
                 assert acq_opt < 0
                 assert acq_opt < acq0
 
         assert non_zero_acq_at_least_once
+
 
 # Changes from original version: Half of the time, we sample x in [0, 0.02]^2, where
 # the shape of EI is more interesting
@@ -232,22 +254,30 @@ def test_numerical_gradient():
             f0, analytical_gradient = ei.compute_acq_with_gradient(x)
             analytical_gradient = analytical_gradient.flatten()
             if debug_output:
-                print('x0 = {}, f(x_0) = {}, grad(x_0) = {}'.format(
-                    x, f0, analytical_gradient))
+                print(
+                    "x0 = {}, f(x_0) = {}, grad(x_0) = {}".format(
+                        x, f0, analytical_gradient
+                    )
+                )
 
             for i in range(2):
                 h = np.zeros_like(x)
                 h[i] = eps
-                fpeps = ei.compute_acq(x+h)[0]
-                fmeps = ei.compute_acq(x-h)[0]
+                fpeps = ei.compute_acq(x + h)[0]
+                fmeps = ei.compute_acq(x - h)[0]
                 numerical_derivative = (fpeps - fmeps) / (2 * eps)
                 if debug_output:
-                    print('f(x0+eps) = {}, f(x0-eps) = {}, findiff = {}, deriv = {}'.format(
-                        fpeps[0], fmeps[0], numerical_derivative[0],
-                        analytical_gradient[i]))
+                    print(
+                        "f(x0+eps) = {}, f(x0-eps) = {}, findiff = {}, deriv = {}".format(
+                            fpeps[0],
+                            fmeps[0],
+                            numerical_derivative[0],
+                            analytical_gradient[i],
+                        )
+                    )
                 np.testing.assert_almost_equal(
-                    numerical_derivative.item(), analytical_gradient[i],
-                    decimal=4)
+                    numerical_derivative.item(), analytical_gradient[i], decimal=4
+                )
 
 
 def test_value_same_as_with_gradient():

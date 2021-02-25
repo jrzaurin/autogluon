@@ -19,13 +19,15 @@ class StoppingRungSystem(object):
     This is different to what has been published as ASHA (see
     :class:`PromotionRungSystem`).
     """
+
     def __init__(self, rung_levels, promote_quantiles, max_t):
         # The data entry in _rungs is a dict mapping task_key to
         # reward_value
         assert len(rung_levels) == len(promote_quantiles)
         self._rungs = [
             RungEntry(level=x, prom_quant=y, data=dict())
-            for x, y in reversed(list(zip(rung_levels, promote_quantiles)))]
+            for x, y in reversed(list(zip(rung_levels, promote_quantiles)))
+        ]
 
     def on_task_schedule(self):
         return dict()
@@ -54,8 +56,9 @@ class StoppingRungSystem(object):
             considered milestones for this task
         :return: dict(task_continues, milestone_reached, next_milestone)
         """
-        assert cur_rew is not None, \
-            "Reward attribute must be a numerical value, not None"
+        assert (
+            cur_rew is not None
+        ), "Reward attribute must be a numerical value, not None"
         task_key = str(task.task_id)
         task_continues = True
         milestone_reached = False
@@ -74,9 +77,11 @@ class StoppingRungSystem(object):
                 # particular, if a future milestone is reported via
                 # register_pending, its reward value has to be passed
                 # later on via update.
-                assert cur_iter == milestone, \
-                    "cur_iter = {} > {} = milestone. Make sure to report time attributes covering all milestones".format(
-                        cur_iter, milestone)
+                assert (
+                    cur_iter == milestone
+                ), "cur_iter = {} > {} = milestone. Make sure to report time attributes covering all milestones".format(
+                    cur_iter, milestone
+                )
                 milestone_reached = True
                 cutoff = self._cutoff(recorded, prom_quant)
                 if cutoff is not None and cur_rew < cutoff:
@@ -85,9 +90,10 @@ class StoppingRungSystem(object):
                 break
             next_milestone = milestone
         return {
-            'task_continues': task_continues,
-            'milestone_reached': milestone_reached,
-            'next_milestone': next_milestone}
+            "task_continues": task_continues,
+            "milestone_reached": milestone_reached,
+            "next_milestone": next_milestone,
+        }
 
     def on_task_remove(self, task):
         pass
@@ -106,8 +112,10 @@ class StoppingRungSystem(object):
         return copy.deepcopy(self._rungs)
 
     def __repr__(self):
-        iters = " | ".join([
-            "Iter {:.3f}: {}".format(
-                r.level, self._cutoff(r.data, r.prom_quant))
-            for r in self._rungs])
+        iters = " | ".join(
+            [
+                "Iter {:.3f}: {}".format(r.level, self._cutoff(r.data, r.prom_quant))
+                for r in self._rungs
+            ]
+        )
         return "Rung system: " + iters

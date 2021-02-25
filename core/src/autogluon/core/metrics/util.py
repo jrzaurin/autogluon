@@ -10,8 +10,8 @@ def sanitize_array(array):
     a = np.ravel(array)
     maxi = np.nanmax(a[np.isfinite(a)])
     mini = np.nanmin(a[np.isfinite(a)])
-    array[array == float('inf')] = maxi
-    array[array == float('-inf')] = mini
+    array[array == float("inf")] = maxi
+    array[array == float("-inf")] = mini
     mid = (maxi + mini) / 2
     array[np.isnan(array)] = mid
     return array

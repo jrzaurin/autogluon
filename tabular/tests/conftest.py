@@ -33,41 +33,41 @@ class DatasetLoaderHelper:
     dataset_info_dict = dict(
         # Binary dataset
         adult={
-            'url': 'https://autogluon.s3.amazonaws.com/datasets/AdultIncomeBinaryClassification.zip',
-            'name': 'AdultIncomeBinaryClassification',
-            'problem_type': BINARY,
-            'label': 'class',
+            "url": "https://autogluon.s3.amazonaws.com/datasets/AdultIncomeBinaryClassification.zip",
+            "name": "AdultIncomeBinaryClassification",
+            "problem_type": BINARY,
+            "label": "class",
         },
         # Multiclass big dataset with 7 classes, all features are numeric. Runs SLOW.
         covertype={
-            'url': 'https://autogluon.s3.amazonaws.com/datasets/CoverTypeMulticlassClassification.zip',
-            'name': 'CoverTypeMulticlassClassification',
-            'problem_type': MULTICLASS,
-            'label': 'Cover_Type',
+            "url": "https://autogluon.s3.amazonaws.com/datasets/CoverTypeMulticlassClassification.zip",
+            "name": "CoverTypeMulticlassClassification",
+            "problem_type": MULTICLASS,
+            "label": "Cover_Type",
         },
         # Regression with mixed feature-types, skewed Y-values.
         ames={
-            'url': 'https://autogluon.s3.amazonaws.com/datasets/AmesHousingPriceRegression.zip',
-            'name': 'AmesHousingPriceRegression',
-            'problem_type': REGRESSION,
-            'label': 'SalePrice',
+            "url": "https://autogluon.s3.amazonaws.com/datasets/AmesHousingPriceRegression.zip",
+            "name": "AmesHousingPriceRegression",
+            "problem_type": REGRESSION,
+            "label": "SalePrice",
         },
         # Regression with multiple text field and categorical
         sts={
-            'url': 'https://autogluon-text.s3.amazonaws.com/glue_sts.zip',
-            'name': 'glue_sts',
-            'problem_type': REGRESSION,
-            'label': 'score',
-        }
+            "url": "https://autogluon-text.s3.amazonaws.com/glue_sts.zip",
+            "name": "glue_sts",
+            "problem_type": REGRESSION,
+            "label": "score",
+        },
     )
 
     @staticmethod
-    def load_dataset(name: str, directory_prefix: str = './datasets/'):
+    def load_dataset(name: str, directory_prefix: str = "./datasets/"):
         dataset_info = copy.deepcopy(DatasetLoaderHelper.dataset_info_dict[name])
-        train_file = dataset_info.pop('train_file', 'train_data.csv')
-        test_file = dataset_info.pop('test_file', 'test_data.csv')
-        name_inner = dataset_info.pop('name')
-        url = dataset_info.pop('url', None)
+        train_file = dataset_info.pop("train_file", "train_data.csv")
+        test_file = dataset_info.pop("test_file", "test_data.csv")
+        name_inner = dataset_info.pop("name")
+        url = dataset_info.pop("url", None)
         train_data, test_data = DatasetLoaderHelper.load_data(
             directory_prefix=directory_prefix,
             train_file=train_file,
@@ -85,7 +85,9 @@ class DatasetLoaderHelper:
         directory = directory_prefix + name + "/"
         train_file_path = directory + train_file
         test_file_path = directory + test_file
-        if (not os.path.exists(train_file_path)) or (not os.path.exists(test_file_path)):
+        if (not os.path.exists(train_file_path)) or (
+            not os.path.exists(test_file_path)
+        ):
             # fetch files from s3:
             print("%s data not found locally, so fetching from %s" % (name, url))
             zip_name = ag.download(url, directory_prefix)
@@ -99,16 +101,27 @@ class DatasetLoaderHelper:
 
 class FitHelper:
     @staticmethod
-    def fit_and_validate_dataset(dataset_name, fit_args, sample_size=1000, refit_full=True, delete_directory=True):
-        directory_prefix = './datasets/'
-        train_data, test_data, dataset_info = DatasetLoaderHelper.load_dataset(name=dataset_name, directory_prefix=directory_prefix)
-        label = dataset_info['label']
-        save_path = os.path.join(directory_prefix, dataset_name, f'AutogluonOutput_{uuid.uuid4()}')
+    def fit_and_validate_dataset(
+        dataset_name, fit_args, sample_size=1000, refit_full=True, delete_directory=True
+    ):
+        directory_prefix = "./datasets/"
+        train_data, test_data, dataset_info = DatasetLoaderHelper.load_dataset(
+            name=dataset_name, directory_prefix=directory_prefix
+        )
+        label = dataset_info["label"]
+        save_path = os.path.join(
+            directory_prefix, dataset_name, f"AutogluonOutput_{uuid.uuid4()}"
+        )
         init_args = dict(
             label=label,
             path=save_path,
         )
-        predictor = FitHelper.fit_dataset(train_data=train_data, init_args=init_args, fit_args=fit_args, sample_size=sample_size)
+        predictor = FitHelper.fit_dataset(
+            train_data=train_data,
+            init_args=init_args,
+            fit_args=fit_args,
+            sample_size=sample_size,
+        )
         if sample_size is not None and sample_size < len(test_data):
             test_data = test_data.sample(n=sample_size, random_state=0)
         predictor.predict(test_data)
@@ -120,14 +133,16 @@ class FitHelper:
             refit_model_names = predictor.refit_full()
             assert len(refit_model_names) == 2
             refit_model_name = refit_model_names[model_name]
-            assert '_FULL' in refit_model_name
+            assert "_FULL" in refit_model_name
             predictor.predict(test_data, model=refit_model_name)
             predictor.predict_proba(test_data, model=refit_model_name)
         predictor.info()
         predictor.leaderboard(test_data, extra_info=True)
         assert os.path.realpath(save_path) == os.path.realpath(predictor.path)
         if delete_directory:
-            shutil.rmtree(save_path, ignore_errors=True)  # Delete AutoGluon output directory to ensure runs' information has been removed.
+            shutil.rmtree(
+                save_path, ignore_errors=True
+            )  # Delete AutoGluon output directory to ensure runs' information has been removed.
         return predictor
 
     @staticmethod

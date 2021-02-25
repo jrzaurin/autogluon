@@ -45,12 +45,16 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
     when the labeled data is unchanged.
 
     """
+
     def __init__(
-            self, gpmodel: GPModel, init_state: TuningJobState,
-            model_args: GPModelArgs,
-            skip_optimization: SkipOptimizationPredicate = None,
-            profiler: GPMXNetSimpleProfiler = None,
-            debug_log: Optional[DebugLogPrinter] = None):
+        self,
+        gpmodel: GPModel,
+        init_state: TuningJobState,
+        model_args: GPModelArgs,
+        skip_optimization: SkipOptimizationPredicate = None,
+        profiler: GPMXNetSimpleProfiler = None,
+        debug_log: Optional[DebugLogPrinter] = None,
+    ):
         self._gpmodel = gpmodel
         self._state = copy.copy(init_state)
         self._model_args = model_args
@@ -83,7 +87,7 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
 
         """
         if self._model is None:
-            skip_optimization = kwargs.get('skip_optimization')
+            skip_optimization = kwargs.get("skip_optimization")
             self._compute_model(skip_optimization=skip_optimization)
         return self._model
 
@@ -107,9 +111,7 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
     @staticmethod
     def _find_candidate(candidate: Candidate, lst: List):
         try:
-            pos = next(
-                i for i, x in enumerate(lst)
-                if x.candidate == candidate)
+            pos = next(i for i, x in enumerate(lst) if x.candidate == candidate)
         except StopIteration:
             pos = -1
         return pos
@@ -122,29 +124,31 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
 
         """
         # Candidate may be labeled or pending. First, try labeled
-        pos = self._find_candidate(
-            candidate, self._state.candidate_evaluations)
+        pos = self._find_candidate(candidate, self._state.candidate_evaluations)
         if pos != -1:
             self._model = None  # Invalidate
             self._state.candidate_evaluations.pop(pos)
             if self._debug_log is not None:
                 deb_msg = "[GPModelPendingCandidateStateTransformer.drop_candidate]\n"
-                deb_msg += ("- len(candidate_evaluations) afterwards = {}".format(
-                    len(self.state.candidate_evaluations)))
+                deb_msg += "- len(candidate_evaluations) afterwards = {}".format(
+                    len(self.state.candidate_evaluations)
+                )
                 logger.info(deb_msg)
         else:
             # Try pending
-            pos = self._find_candidate(
-                candidate, self._state.pending_evaluations)
-            assert pos != -1, \
-                "Candidate {} not registered (neither labeled, nor pending)".format(
-                    candidate)
+            pos = self._find_candidate(candidate, self._state.pending_evaluations)
+            assert (
+                pos != -1
+            ), "Candidate {} not registered (neither labeled, nor pending)".format(
+                candidate
+            )
             self._model = None  # Invalidate
             self._state.pending_evaluations.pop(pos)
             if self._debug_log is not None:
                 deb_msg = "[GPModelPendingCandidateStateTransformer.drop_candidate]\n"
-                deb_msg += ("- len(pending_evaluations) afterwards = {}\n".format(
-                    len(self.state.pending_evaluations)))
+                deb_msg += "- len(pending_evaluations) afterwards = {}\n".format(
+                    len(self.state.pending_evaluations)
+                )
                 logger.info(deb_msg)
 
     def label_candidate(self, data: CandidateEvaluation):
@@ -155,28 +159,30 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
         :param data: New labeled candidate
 
         """
-        pos = self._find_candidate(
-            data.candidate, self._state.pending_evaluations)
+        pos = self._find_candidate(data.candidate, self._state.pending_evaluations)
         if pos != -1:
             self._state.pending_evaluations.pop(pos)
         self._state.candidate_evaluations.append(data)
         self._model = None  # Invalidate
 
     def filter_pending_evaluations(
-            self, filter_pred: Callable[[PendingEvaluation], bool]):
+        self, filter_pred: Callable[[PendingEvaluation], bool]
+    ):
         """
         Filters state.pending_evaluations with filter_pred.
 
         :param filter_pred Filtering predicate
 
         """
-        new_pending_evaluations = list(filter(
-            filter_pred, self._state.pending_evaluations))
+        new_pending_evaluations = list(
+            filter(filter_pred, self._state.pending_evaluations)
+        )
         if len(new_pending_evaluations) != len(self._state.pending_evaluations):
             if self._debug_log is not None:
                 deb_msg = "[GPModelPendingCandidateStateTransformer.filter_pending_evaluations]\n"
-                deb_msg += ("- from len {} to {}".format(
-                    len(self.state.pending_evaluations), len(new_pending_evaluations)))
+                deb_msg += "- from len {} to {}".format(
+                    len(self.state.pending_evaluations), len(new_pending_evaluations)
+                )
                 logger.info(deb_msg)
             self._model = None  # Invalidate
             del self._state.pending_evaluations[:]
@@ -197,7 +203,8 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
                 fit_parameters = False
                 logger.warning(
                     "Skipping the refitting of GP hyperparameters, since the "
-                    "labeled data did not change since the last recent fit")
+                    "labeled data did not change since the last recent fit"
+                )
         self._model = GaussProcSurrogateModel(
             state=self._state,
             active_metric=args.active_metric,
@@ -208,7 +215,8 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
             normalize_targets=args.normalize_targets,
             profiler=self._profiler,
             debug_log=self._debug_log,
-            debug_fantasy_values=self._debug_fantasy_values)
+            debug_fantasy_values=self._debug_fantasy_values,
+        )
         # DEBUG: Supplied values are used only once
         self._debug_fantasy_values = None
         # Note: This may be different than self._gpmodel.get_params(), since
@@ -217,5 +225,4 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
         if fit_parameters:
             # Keep copy of labeled data in order to avoid unnecessary
             # refitting
-            self._candidate_evaluations = copy.copy(
-                self._state.candidate_evaluations)
+            self._candidate_evaluations = copy.copy(self._state.candidate_evaluations)

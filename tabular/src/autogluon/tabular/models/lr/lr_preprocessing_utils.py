@@ -4,7 +4,7 @@ from sklearn.preprocessing import OneHotEncoder
 
 
 class OheFeaturesGenerator(BaseEstimator, TransformerMixin):
-    missing_category_str = '!missing!'
+    missing_category_str = "!missing!"
 
     def __init__(self, cats_cols):
         self._feature_names = []
@@ -13,7 +13,7 @@ class OheFeaturesGenerator(BaseEstimator, TransformerMixin):
         self.labels = None
 
     def fit(self, X, y=None):
-        self.ohe_encs = {f: OneHotEncoder(handle_unknown='ignore') for f in self.cats}
+        self.ohe_encs = {f: OneHotEncoder(handle_unknown="ignore") for f in self.cats}
         self.labels = {}
 
         for c in self.cats:
@@ -27,7 +27,7 @@ class OheFeaturesGenerator(BaseEstimator, TransformerMixin):
         # Update feature names
         self._feature_names = []
         for k, v in self.labels.items():
-            for f in k + '_' + v[0]:
+            for f in k + "_" + v[0]:
                 self._feature_names.append(f)
 
         return hstack(Xs)
@@ -40,7 +40,6 @@ class OheFeaturesGenerator(BaseEstimator, TransformerMixin):
 
 
 class NlpDataPreprocessor(BaseEstimator, TransformerMixin):
-
     def __init__(self, nlp_cols):
         self.nlp_cols = nlp_cols
 
@@ -50,13 +49,12 @@ class NlpDataPreprocessor(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         X = X[self.nlp_cols].copy()
         for c in self.nlp_cols:
-            X[c] = X[c].astype(str).fillna(' ')
-        X = X.apply(' '.join, axis=1).str.replace('[ ]+', ' ', regex=True)
+            X[c] = X[c].astype(str).fillna(" ")
+        X = X.apply(" ".join, axis=1).str.replace("[ ]+", " ", regex=True)
         return X.values.tolist()
 
 
 class NumericDataPreprocessor(BaseEstimator, TransformerMixin):
-
     def __init__(self, cont_cols):
         self.cont_cols = cont_cols
 

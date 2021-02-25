@@ -21,13 +21,21 @@ def lgb_trial(args, reporter):
         try_import_lightgbm()
         import lightgbm as lgb
 
-        dataset_train = lgb.Dataset(util_args.directory + util_args.dataset_train_filename)
+        dataset_train = lgb.Dataset(
+            util_args.directory + util_args.dataset_train_filename
+        )
         dataset_val = lgb.Dataset(util_args.directory + util_args.dataset_val_filename)
-        X_val, y_val = load_pkl.load(util_args.directory + util_args.dataset_val_pkl_filename)
+        X_val, y_val = load_pkl.load(
+            util_args.directory + util_args.dataset_val_pkl_filename
+        )
 
         reporter_fit = None  # Set reporter_fit to reporter for per-iteration reporting, but will take up MUCH more space (can quickly lead to OOM).
 
-        fit_model_args = dict(dataset_train=dataset_train, dataset_val=dataset_val, **util_args.get('fit_kwargs', dict()))
+        fit_model_args = dict(
+            dataset_train=dataset_train,
+            dataset_val=dataset_val,
+            **util_args.get("fit_kwargs", dict())
+        )
         predict_proba_args = dict(X=X_val)
         model_trial.fit_and_save_model(
             model=model,
@@ -36,7 +44,7 @@ def lgb_trial(args, reporter):
             predict_proba_args=predict_proba_args,
             y_val=y_val,
             time_start=util_args.time_start,
-            time_limit=util_args.get('time_limit', None),
+            time_limit=util_args.get("time_limit", None),
             reporter=reporter_fit,
         )
     except Exception as e:

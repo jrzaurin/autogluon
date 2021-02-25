@@ -11,7 +11,7 @@ from gluoncv.auto.tasks import ObjectDetection as _ObjectDetection
 from ..configs.presets_configs import unpack, _check_gpu_memory_presets
 from ..utils import MXNetErrorCatcher
 
-__all__ = ['ObjectDetector']
+__all__ = ["ObjectDetector"]
 
 logger = logging.getLogger()  # return root logger
 
@@ -30,6 +30,7 @@ class ObjectDetector(object):
         If using logging, you can alternatively control amount of information printed via logger.setLevel(L),
         where L ranges from 0 to 50 (Note: higher values of L correspond to fewer print statements, opposite of verbosity levels)
     """
+
     # Dataset is a subclass of `pd.DataFrame`, with `image` and `bbox` columns.
     Dataset = _ObjectDetection.Dataset
 
@@ -46,14 +47,16 @@ class ObjectDetector(object):
     def path(self):
         return self._log_dir
 
-    @unpack('object_detector')
-    def fit(self,
-            train_data,
-            tuning_data=None,
-            time_limit='auto',
-            presets=None,
-            hyperparameters=None,
-            **kwargs):
+    @unpack("object_detector")
+    def fit(
+        self,
+        train_data,
+        tuning_data=None,
+        time_limit="auto",
+        presets=None,
+        hyperparameters=None,
+        **kwargs,
+    ):
         """Automatic fit process for object detection.
         Tip: if you observe very slow training speed only happening at the first epoch and your overall time budget
         is not large, you may disable `CUDNN_AUTOTUNE` by setting the environment variable
@@ -192,67 +195,81 @@ class ObjectDetector(object):
         # init/validate kwargs
         kwargs = self._validate_kwargs(kwargs)
         # unpack
-        num_trials = kwargs['hyperparameter_tune_kwargs']['num_trials']
-        nthreads_per_trial = kwargs['nthreads_per_trial']
-        ngpus_per_trial = kwargs['ngpus_per_trial']
-        holdout_frac = kwargs['holdout_frac']
-        random_state = kwargs['random_state']
-        search_strategy = kwargs['hyperparameter_tune_kwargs']['search_strategy']
-        max_reward = kwargs['hyperparameter_tune_kwargs']['max_reward']
-        scheduler_options = kwargs['hyperparameter_tune_kwargs']['scheduler_options']
+        num_trials = kwargs["hyperparameter_tune_kwargs"]["num_trials"]
+        nthreads_per_trial = kwargs["nthreads_per_trial"]
+        ngpus_per_trial = kwargs["ngpus_per_trial"]
+        holdout_frac = kwargs["holdout_frac"]
+        random_state = kwargs["random_state"]
+        search_strategy = kwargs["hyperparameter_tune_kwargs"]["search_strategy"]
+        max_reward = kwargs["hyperparameter_tune_kwargs"]["max_reward"]
+        scheduler_options = kwargs["hyperparameter_tune_kwargs"]["scheduler_options"]
 
         log_level = verbosity2loglevel(self._verbosity)
         set_logger_verbosity(self._verbosity, logger=logger)
         if presets:
             if not isinstance(presets, list):
                 presets = [presets]
-            logger.log(20, f'Presets specified: {presets}')
+            logger.log(20, f"Presets specified: {presets}")
 
-        if time_limit == 'auto':
+        if time_limit == "auto":
             # no presets, no user specified time_limit
             time_limit = 7200
-            logger.log(20, f'`time_limit=auto` set to `time_limit={time_limit}`.')
+            logger.log(20, f"`time_limit=auto` set to `time_limit={time_limit}`.")
 
         if self._detector is not None:
             self._detector._logger.setLevel(log_level)
             self._detector._logger.propagate = True
-            self._fit_summary = self._detector.fit(train_data, tuning_data, 1 - holdout_frac, random_state, resume=False)
-            if hasattr(self._classifier, 'fit_history'):
-                self._fit_summary['fit_history'] = self._classifier.fit_history()
+            self._fit_summary = self._detector.fit(
+                train_data, tuning_data, 1 - holdout_frac, random_state, resume=False
+            )
+            if hasattr(self._classifier, "fit_history"):
+                self._fit_summary["fit_history"] = self._classifier.fit_history()
             return self
 
         # new HPO task
         if time_limit is not None and num_trials is None:
             num_trials = 99999
         if time_limit is None and num_trials is None:
-            raise ValueError("`time_limit` and kwargs['hyperparameter_tune_kwargs']['num_trials'] can not be `None` at the same time, "
-                             "otherwise the training will not be terminated gracefully.")
-        config={'log_dir': self._log_dir,
-                'num_trials': 99999 if num_trials is None else max(1, num_trials),
-                'time_limits': 2147483647 if time_limit is None else max(1, time_limit),
-                'search_strategy': search_strategy,
-                }
+            raise ValueError(
+                "`time_limit` and kwargs['hyperparameter_tune_kwargs']['num_trials'] can not be `None` at the same time, "
+                "otherwise the training will not be terminated gracefully."
+            )
+        config = {
+            "log_dir": self._log_dir,
+            "num_trials": 99999 if num_trials is None else max(1, num_trials),
+            "time_limits": 2147483647 if time_limit is None else max(1, time_limit),
+            "search_strategy": search_strategy,
+        }
         if max_reward is not None:
-            config['max_reward'] = max_reward
+            config["max_reward"] = max_reward
         if nthreads_per_trial is not None:
-            config['nthreads_per_trial'] = nthreads_per_trial
+            config["nthreads_per_trial"] = nthreads_per_trial
         if ngpus_per_trial is not None:
-            config['ngpus_per_trial'] = ngpus_per_trial
+            config["ngpus_per_trial"] = ngpus_per_trial
         if isinstance(hyperparameters, dict):
-            if 'batch_size' in hyperparameters:
-                bs = hyperparameters['batch_size']
-                _check_gpu_memory_presets(bs, ngpus_per_trial, 4, 1280)  # 1280MB per sample
+            if "batch_size" in hyperparameters:
+                bs = hyperparameters["batch_size"]
+                _check_gpu_memory_presets(
+                    bs, ngpus_per_trial, 4, 1280
+                )  # 1280MB per sample
             # check if hyperparameters overwriting existing config
             for k, v in hyperparameters.items():
                 if k in config:
-                    raise ValueError(f'Overwriting {k} = {config[k]} to {v} by hyperparameters is ambiguous.')
+                    raise ValueError(
+                        f"Overwriting {k} = {config[k]} to {v} by hyperparameters is ambiguous."
+                    )
             config.update(hyperparameters)
         if scheduler_options is not None:
             config.update(scheduler_options)
         # verbosity
         if log_level > logging.INFO:
-            logging.getLogger('gluoncv.auto.tasks.object_detection').propagate = False
-            for logger_name in ('SSDEstimator', 'CenterNetEstimator', 'YOLOv3Estimator', 'FasterRCNNEstimator'):
+            logging.getLogger("gluoncv.auto.tasks.object_detection").propagate = False
+            for logger_name in (
+                "SSDEstimator",
+                "CenterNetEstimator",
+                "YOLOv3Estimator",
+                "FasterRCNNEstimator",
+            ):
                 logging.getLogger(logger_name).setLevel(log_level)
                 logging.getLogger(logger_name).propagate = False
         task = _ObjectDetection(config=config)
@@ -261,39 +278,53 @@ class ObjectDetector(object):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             with MXNetErrorCatcher() as err:
-                self._detector = task.fit(train_data, tuning_data, 1 - holdout_frac, random_state)
+                self._detector = task.fit(
+                    train_data, tuning_data, 1 - holdout_frac, random_state
+                )
             if err.exc_value is not None:
                 raise RuntimeError(err.exc_value)
         self._detector._logger.setLevel(log_level)
         self._detector._logger.propagate = True
         self._fit_summary = task.fit_summary()
-        if hasattr(task, 'fit_history'):
-            self._fit_summary['fit_history'] = task.fit_history()
+        if hasattr(task, "fit_history"):
+            self._fit_summary["fit_history"] = task.fit_history()
         return self
 
     def _validate_kwargs(self, kwargs):
         """validate and initialize default kwargs"""
-        kwargs['holdout_frac'] = kwargs.get('holdout_frac', 0.1)
-        if not (0 < kwargs['holdout_frac'] < 1.0):
-            raise ValueError(f'Range error for `holdout_frac`, expected to be within range (0, 1), given {kwargs["holdout_frac"]}')
-        kwargs['random_state'] = kwargs.get('random_state', None)
-        kwargs['nthreads_per_trial'] = kwargs.get('nthreads_per_trial', None)
-        kwargs['ngpus_per_trial'] = kwargs.get('ngpus_per_trial', None)
-        if kwargs['ngpus_per_trial'] is not None and kwargs['ngpus_per_trial'] > 0:
+        kwargs["holdout_frac"] = kwargs.get("holdout_frac", 0.1)
+        if not (0 < kwargs["holdout_frac"] < 1.0):
+            raise ValueError(
+                f'Range error for `holdout_frac`, expected to be within range (0, 1), given {kwargs["holdout_frac"]}'
+            )
+        kwargs["random_state"] = kwargs.get("random_state", None)
+        kwargs["nthreads_per_trial"] = kwargs.get("nthreads_per_trial", None)
+        kwargs["ngpus_per_trial"] = kwargs.get("ngpus_per_trial", None)
+        if kwargs["ngpus_per_trial"] is not None and kwargs["ngpus_per_trial"] > 0:
             detected_gpu = get_gpu_count()
-            if detected_gpu < kwargs['ngpus_per_trial']:
-                raise ValueError(f"Insufficient detected # gpus {detected_gpu} vs requested {kwargs['ngpus_per_trial']}")
+            if detected_gpu < kwargs["ngpus_per_trial"]:
+                raise ValueError(
+                    f"Insufficient detected # gpus {detected_gpu} vs requested {kwargs['ngpus_per_trial']}"
+                )
         # tune kwargs
-        hpo_tune_args = kwargs.get('hyperparameter_tune_kwargs', {})
-        hpo_tune_args['num_trials'] = hpo_tune_args.get('num_trials', 1)
-        hpo_tune_args['search_strategy'] = hpo_tune_args.get('search_strategy', 'random')
-        if not hpo_tune_args['search_strategy'] in ('random', 'bayesopt', 'grid'):
-            raise ValueError(f"Invalid search strategy: {hpo_tune_args['search_strategy']}, supported: ('random', 'bayesopt', 'grid')")
-        hpo_tune_args['max_reward'] = hpo_tune_args.get('max_reward', None)
-        if hpo_tune_args['max_reward'] is not None and hpo_tune_args['max_reward'] < 0:
-            raise ValueError(f"Expected `max_reward` to be a positive float number between 0 and 1.0, given {hpo_tune_args['max_reward']}")
-        hpo_tune_args['scheduler_options'] = hpo_tune_args.get('scheduler_options', None)
-        kwargs['hyperparameter_tune_kwargs'] = hpo_tune_args
+        hpo_tune_args = kwargs.get("hyperparameter_tune_kwargs", {})
+        hpo_tune_args["num_trials"] = hpo_tune_args.get("num_trials", 1)
+        hpo_tune_args["search_strategy"] = hpo_tune_args.get(
+            "search_strategy", "random"
+        )
+        if not hpo_tune_args["search_strategy"] in ("random", "bayesopt", "grid"):
+            raise ValueError(
+                f"Invalid search strategy: {hpo_tune_args['search_strategy']}, supported: ('random', 'bayesopt', 'grid')"
+            )
+        hpo_tune_args["max_reward"] = hpo_tune_args.get("max_reward", None)
+        if hpo_tune_args["max_reward"] is not None and hpo_tune_args["max_reward"] < 0:
+            raise ValueError(
+                f"Expected `max_reward` to be a positive float number between 0 and 1.0, given {hpo_tune_args['max_reward']}"
+            )
+        hpo_tune_args["scheduler_options"] = hpo_tune_args.get(
+            "scheduler_options", None
+        )
+        kwargs["hyperparameter_tune_kwargs"] = hpo_tune_args
         return kwargs
 
     def predict(self, data, as_pandas=True):
@@ -316,7 +347,7 @@ class ObjectDetector(object):
             and all results are concatenated.
         """
         if self._detector is None:
-            raise RuntimeError('Detector is not initialized, try `fit` first.')
+            raise RuntimeError("Detector is not initialized, try `fit` first.")
         ret = self._detector.predict(data)
         if as_pandas:
             return ret
@@ -332,7 +363,7 @@ class ObjectDetector(object):
             The validation data.
         """
         if self._detector is None:
-            raise RuntimeError('Detector not initialized, try `fit` first.')
+            raise RuntimeError("Detector not initialized, try `fit` first.")
         return self._detector.evaluate(data)
 
     def fit_summary(self):
@@ -357,8 +388,8 @@ class ObjectDetector(object):
 
         """
         if path is None:
-            path = os.path.join(self.path, 'object_detector.ag')
-        with open(path, 'wb') as fid:
+            path = os.path.join(self.path, "object_detector.ag")
+        with open(path, "wb") as fid:
             pickle.dump(self, fid)
 
     @classmethod
@@ -378,8 +409,8 @@ class ObjectDetector(object):
 
         """
         if os.path.isdir(path):
-            path = os.path.join(path, 'object_detector.ag')
-        with open(path, 'rb') as fid:
+            path = os.path.join(path, "object_detector.ag")
+        with open(path, "rb") as fid:
             obj = pickle.load(fid)
         obj._verbosity = verbosity
         return obj

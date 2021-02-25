@@ -16,6 +16,7 @@ class CategoryMemoryMinimizeFeatureGenerator(AbstractFeatureGenerator):
     Minimizes memory usage of category features by converting the category values to monotonically increasing int values.
     This is important for category features with string values which can take up significant memory despite the string information not being used downstream.
     """
+
     def __init__(self, inplace=False, **kwargs):
         super().__init__(**kwargs)
         self.inplace = inplace
@@ -38,7 +39,10 @@ class CategoryMemoryMinimizeFeatureGenerator(AbstractFeatureGenerator):
         for column in X:
             old_categories = list(X[column].cat.categories.values)
             new_categories = list(range(len(old_categories)))
-            category_maps[column] = {old_code: new_code for old_code, new_code in zip(old_categories, new_categories)}
+            category_maps[column] = {
+                old_code: new_code
+                for old_code, new_code in zip(old_categories, new_categories)
+            }
         return category_maps
 
     # TODO: Compress further, uint16, etc.
@@ -47,7 +51,9 @@ class CategoryMemoryMinimizeFeatureGenerator(AbstractFeatureGenerator):
             if not self.inplace:
                 X = X.copy(deep=True)
             for column in self._category_maps:
-                X[column].cat.rename_categories(self._category_maps[column], inplace=True)
+                X[column].cat.rename_categories(
+                    self._category_maps[column], inplace=True
+                )
         return X
 
     def _remove_features_in(self, features: list):
@@ -58,7 +64,7 @@ class CategoryMemoryMinimizeFeatureGenerator(AbstractFeatureGenerator):
                     self._category_maps.pop(feature)
 
     def _more_tags(self):
-        return {'feature_interactions': False}
+        return {"feature_interactions": False}
 
 
 # TODO: What about nulls / unknowns?
@@ -72,9 +78,12 @@ class NumericMemoryMinimizeFeatureGenerator(AbstractFeatureGenerator):
     **kwargs :
         Refer to :class:`AbstractFeatureGenerator` documentation for details on valid key word arguments.
     """
+
     def __init__(self, dtype_out=np.uint8, **kwargs):
         super().__init__(**kwargs)
-        self.dtype_out, self._clip_min, self._clip_max = self._get_dtype_clip_args(dtype_out)
+        self.dtype_out, self._clip_min, self._clip_max = self._get_dtype_clip_args(
+            dtype_out
+        )
 
     def _fit_transform(self, X: DataFrame, **kwargs) -> (DataFrame, dict):
         X_out = self._transform(X)
@@ -96,7 +105,9 @@ class NumericMemoryMinimizeFeatureGenerator(AbstractFeatureGenerator):
         return dtype_info.dtype, dtype_info.min, dtype_info.max
 
     def _minimize_numeric_memory_usage(self, X: DataFrame):
-        return clip_and_astype(df=X, clip_min=self._clip_min, clip_max=self._clip_max, dtype=self.dtype_out)
+        return clip_and_astype(
+            df=X, clip_min=self._clip_min, clip_max=self._clip_max, dtype=self.dtype_out
+        )
 
     def _more_tags(self):
-        return {'feature_interactions': False}
+        return {"feature_interactions": False}

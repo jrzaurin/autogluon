@@ -25,6 +25,7 @@ class RenameFeatureGenerator(AbstractFeatureGenerator):
     **kwargs :
         Refer to :class:`AbstractFeatureGenerator` documentation for details on valid key word arguments.
     """
+
     def __init__(self, name_prefix=None, name_suffix=None, inplace=False, **kwargs):
         super().__init__(**kwargs)
         self._name_prefix = name_prefix
@@ -38,7 +39,9 @@ class RenameFeatureGenerator(AbstractFeatureGenerator):
             X = copy.deepcopy(X)
         X.columns = [column_rename_map.get(col, col) for col in X.columns]
 
-        feature_metadata_out = self.feature_metadata_in.rename_features(column_rename_map)
+        feature_metadata_out = self.feature_metadata_in.rename_features(
+            column_rename_map
+        )
         return X, feature_metadata_out.type_group_map_special
 
     def _transform(self, X: DataFrame) -> DataFrame:
@@ -59,7 +62,9 @@ class RenameFeatureGenerator(AbstractFeatureGenerator):
             is_updated_name = True
         else:
             is_updated_name = False
-        column_rename_map = {orig: new for orig, new in zip(X_columns_orig, X_columns_new)}
+        column_rename_map = {
+            orig: new for orig, new in zip(X_columns_orig, X_columns_new)
+        }
         return column_rename_map, is_updated_name
 
     @staticmethod
@@ -68,6 +73,6 @@ class RenameFeatureGenerator(AbstractFeatureGenerator):
 
     def _more_tags(self):
         return {
-            'feature_interactions': False,
-            'allow_post_generators': False,  # TODO: This might not be necessary anymore
+            "feature_interactions": False,
+            "allow_post_generators": False,  # TODO: This might not be necessary anymore
         }

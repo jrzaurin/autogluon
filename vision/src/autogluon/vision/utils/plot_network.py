@@ -1,12 +1,14 @@
 import mxnet as mx
 import numpy as np
 from matplotlib import pyplot
+
 try:
     import graphviz
 except ImportError:
     graphviz = None
 
-__all__ = ['plot_network']
+__all__ = ["plot_network"]
+
 
 def plot_network(block, shape=(1, 3, 224, 224), savefile=False):
     """Plot network to visualize internal structures.
@@ -25,13 +27,14 @@ def plot_network(block, shape=(1, 3, 224, 224), savefile=False):
         raise RuntimeError("Cannot import graphviz.")
     if not isinstance(block, mx.gluon.HybridBlock):
         raise ValueError("block must be HybridBlock, given {}".format(type(block)))
-    data = mx.sym.var('data')
+    data = mx.sym.var("data")
     sym = block(data)
     if isinstance(sym, tuple):
         sym = mx.sym.Group(sym)
 
-    a = mx.viz.plot_network(sym, shape={'data':shape},
-                            node_attrs={'shape':'rect', 'fixedsize':'false'})
+    a = mx.viz.plot_network(
+        sym, shape={"data": shape}, node_attrs={"shape": "rect", "fixedsize": "false"}
+    )
     if savefile:
         a.view(savefile)
     return a

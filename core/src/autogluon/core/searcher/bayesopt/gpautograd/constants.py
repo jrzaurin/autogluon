@@ -25,7 +25,7 @@ NOISE_VARIANCE_LOWER_BOUND = 1e-9
 NOISE_VARIANCE_UPPER_BOUND = 1e6
 
 WARPING_LOWER_BOUND = 0.25
-WARPING_UPPER_BOUND = 4.
+WARPING_UPPER_BOUND = 4.0
 
 MIN_POSTERIOR_VARIANCE = 1e-12
 
@@ -36,24 +36,19 @@ DATA_TYPE = anp.float64
 
 class OptimizationConfig(NamedTuple):
     lbfgs_tol: float
-    lbfgs_maxiter : int
-    verbose : bool
-    n_starts : int
+    lbfgs_maxiter: int
+    verbose: bool
+    n_starts: int
 
 
 class MCMCConfig(NamedTuple):
-    n_samples : int
-    n_burnin : int
-    n_thinning : int
+    n_samples: int
+    n_burnin: int
+    n_thinning: int
 
 
 DEFAULT_OPTIMIZATION_CONFIG = OptimizationConfig(
-    lbfgs_tol=1e-6,
-    lbfgs_maxiter=500,
-    verbose=False,
-    n_starts=5)
+    lbfgs_tol=1e-6, lbfgs_maxiter=500, verbose=False, n_starts=5
+)
 
-DEFAULT_MCMC_CONFIG = MCMCConfig(
-    n_samples=300,
-    n_burnin=250,
-    n_thinning=5)
+DEFAULT_MCMC_CONFIG = MCMCConfig(n_samples=300, n_burnin=250, n_thinning=5)
